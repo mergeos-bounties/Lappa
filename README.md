@@ -149,6 +149,8 @@ Tag `v*` on GitHub → Actions builds both OS and attaches assets to the Release
 
 ## Quick start (Windows, offline, from source)
 
+*For a full Windows setup guide including Docker, see [docs/WINDOWS.md](docs/WINDOWS.md).*
+
 ```powershell
 cd D:\ThanhTrucSolutions\Lappa\packages\server
 python -m venv .venv
