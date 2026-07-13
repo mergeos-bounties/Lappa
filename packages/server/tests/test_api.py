@@ -72,3 +72,18 @@ def test_bundle_and_models_api():
     )
     assert r.status_code == 200
     assert r.json()["ok"] is True
+
+
+def test_urdf_sticks_api():
+    r = client.get("/api/packages/diff_drive_2w/urdf/sticks")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["package"] == "diff_drive_2w"
+    assert body["link_count"] >= 3
+    roles = {n["role"] for n in body["nodes"]}
+    assert "base" in roles
+    assert "wheel" in roles
+    assert body["joint_count"] >= 1
+
+    r = client.get("/api/packages/no_such_pkg/urdf/sticks")
+    assert r.status_code == 404

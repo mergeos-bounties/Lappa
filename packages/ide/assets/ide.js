@@ -13,6 +13,8 @@ let ros2Versions = [];
 let viewMode = "2d"; // 2d | 3d
 let scene3d = null;
 let threeCtx = null; // { renderer, scene, camera, robot, nodes, drag }
+let urdfSticks = null; // parsed URDF stick figure for the active package
+let showSticks = true;
 
 function log(msg) {
   const el = document.getElementById("console");
@@ -85,9 +87,56 @@ async function loadDemo(name) {
   setPill("running", "run");
   trail = [];
   log("sim started: " + name + " (native)");
+  loadUrdfSticks(name).catch((e) => log("urdf sticks: " + e.message));
   if (viewMode === "3d") {
     loadScene3d(name).catch((e) => log("3d scene: " + e.message));
   }
+}
+
+/** Fetch the parsed URDF link/joint stick figure for a package (2D overlay). */
+async function loadUrdfSticks(packageName) {
+  const name = packageName || activePkg?.name;
+  if (!name) return;
+  try {
+    urdfSticks = await api("/api/packages/" + encodeURIComponent(name) + "/urdf/sticks");
+    log(
+      "URDF parsed: " + name + " — " + urdfSticks.link_count + " links, " +
+        urdfSticks.joint_count + " joints"
+    );
+  } catch (e) {
+    urdfSticks = null;
+    log("URDF parse failed for " + name + ": " + e.message);
+  }
+}
+
+/** Draw the URDF link graph as simple sticks (base → wheels/links) in robot-local space. */
+function drawUrdfSticks(ctx, scale) {
+  if (!showSticks || !urdfSticks || !urdfSticks.segments.length) return;
+  const roleColor = {
+    base: "#3fb950",
+    wheel: "#58a6ff",
+    lidar: "#f59e0b",
+    arm_link: "#a371f7",
+    footprint: "#8b949e",
+    part: "#c9d1d9",
+  };
+  ctx.save();
+  ctx.lineWidth = 3;
+  ctx.lineCap = "round";
+  urdfSticks.segments.forEach((seg) => {
+    ctx.strokeStyle = roleColor[seg.type === "fixed" ? "part" : "wheel"] || "#c9d1d9";
+    ctx.beginPath();
+    ctx.moveTo(seg.x1 * scale, -seg.y1 * scale);
+    ctx.lineTo(seg.x2 * scale, -seg.y2 * scale);
+    ctx.stroke();
+  });
+  urdfSticks.nodes.forEach((n) => {
+    ctx.fillStyle = roleColor[n.role] || "#c9d1d9";
+    ctx.beginPath();
+    ctx.arc(n.x * scale, -n.y * scale, 4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.restore();
 }
 
 async function openPath(rel) {
@@ -194,6 +243,9 @@ function drawRobot(ctx, state, w, h) {
   ctx.save();
   ctx.translate(rx, ry);
   ctx.rotate(-(state.theta || 0));
+
+  // URDF stick overlay (base + wheels/links parsed from robot.urdf)
+  drawUrdfSticks(ctx, scale);
 
   if (kind === "simple_arm") {
     const j = state.joints || [0.4, -0.6];
@@ -765,6 +817,11 @@ function wireUi() {
 
   document.getElementById("btn-view-2d").onclick = () => setViewMode("2d");
   document.getElementById("btn-view-3d").onclick = () => setViewMode("3d");
+  document.getElementById("btn-sticks").onclick = () => {
+    showSticks = !showSticks;
+    document.getElementById("btn-sticks").classList.toggle("on", showSticks);
+    log("URDF stick overlay " + (showSticks ? "on" : "off"));
+  };
 
   document.getElementById("btn-run").onclick = async () => {
     const demo = activePkg?.name || demos[0]?.name || "diff_drive_2w";

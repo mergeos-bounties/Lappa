@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from lappa import __version__, docker_bridge, models3d, packager, ros2_versions
+from lappa import __version__, docker_bridge, models3d, packager, ros2_versions, urdf
 from lappa.config import DEMOS_ROOT, IDE_ROOT, ensure_dirs
 from lappa.package_loader import list_demo_packages, load_package, read_file, write_file
 from lappa.sim.session import SESSION
@@ -386,6 +386,17 @@ def api_package_scene3d(package: str) -> dict:
         return models3d.package_scene3d(package)
     except FileNotFoundError as e:
         raise HTTPException(404, str(e)) from e
+
+
+@app.get("/api/packages/{package}/urdf/sticks")
+def api_package_urdf_sticks(package: str) -> dict:
+    """Parse the package URDF and return a 2D stick-figure overlay."""
+    try:
+        return urdf.package_stick_figure(package)
+    except FileNotFoundError as e:
+        raise HTTPException(404, str(e)) from e
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
 
 
 @app.get("/api/packages/{package}/mesh/{filename}")
