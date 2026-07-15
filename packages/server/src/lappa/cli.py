@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import json
+import math
 import time
 from pathlib import Path
+from typing import Any
 
 import typer
 from rich import print as rprint
@@ -28,6 +31,7 @@ docker_app = typer.Typer(help="Docker show mode")
 ros2_app = typer.Typer(help="ROS2 distro selection")
 pkg_app = typer.Typer(help="Bundle / package ROS2 pkgs")
 model_app = typer.Typer(help="Procedural 3D meshes")
+path_app = typer.Typer(help="Path fixture tools")
 app.add_typer(workspace_app, name="workspace")
 app.add_typer(demos_app, name="demos")
 app.add_typer(sim_app, name="sim")
@@ -35,7 +39,43 @@ app.add_typer(docker_app, name="docker")
 app.add_typer(ros2_app, name="ros2")
 app.add_typer(pkg_app, name="package")
 app.add_typer(model_app, name="model")
+app.add_typer(path_app, name="path")
 console = Console()
+
+
+def _path_points_from_fixture(path: Path) -> list[tuple[float, float]]:
+    try:
+        data: Any = json.loads(path.read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise typer.BadParameter(f"could not read fixture: {exc}", param_hint="--file") from exc
+    except json.JSONDecodeError as exc:
+        raise typer.BadParameter(f"invalid JSON fixture: {exc}", param_hint="--file") from exc
+
+    points = data.get("points") if isinstance(data, dict) else None
+    if not isinstance(points, list) or len(points) < 2:
+        raise typer.BadParameter("fixture must contain at least two points", param_hint="--file")
+
+    parsed: list[tuple[float, float]] = []
+    for index, point in enumerate(points):
+        if not isinstance(point, list | tuple) or len(point) < 2:
+            raise typer.BadParameter(f"point {index} must contain x and y", param_hint="--file")
+        try:
+            parsed.append((float(point[0]), float(point[1])))
+        except (TypeError, ValueError) as exc:
+            raise typer.BadParameter(
+                f"point {index} x/y values must be numeric", param_hint="--file"
+            ) from exc
+    return parsed
+
+
+def _path_stats(points: list[tuple[float, float]]) -> dict[str, float | int]:
+    length = sum(math.hypot(b[0] - a[0], b[1] - a[1]) for a, b in zip(points, points[1:]))
+    net = math.hypot(points[-1][0] - points[0][0], points[-1][1] - points[0][1])
+    return {
+        "points": len(points),
+        "path_length_m": round(length, 4),
+        "net_displacement_m": round(net, 4),
+    }
 
 
 @app.command("version")
@@ -151,6 +191,23 @@ def list_demos_compat(
     rprint(f"Found {len(discovered)} demo package(s):")
     for name, demo_path in discovered:
         print(f"{name}\t{demo_path}")
+
+
+@path_app.command("stats")
+def path_stats_cmd(
+    file: Path = typer.Option(
+        ...,
+        "--file",
+        "-f",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        help="JSON fixture with a points array.",
+    ),
+) -> None:
+    """Print path length and net displacement for a polyline fixture."""
+    rprint(_path_stats(_path_points_from_fixture(file)))
 
 
 @workspace_app.command("open")
