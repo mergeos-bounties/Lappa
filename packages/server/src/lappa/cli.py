@@ -421,6 +421,36 @@ def pkg_bundles() -> None:
     rprint(packager.list_bundles())
 
 
+@pkg_app.command("template")
+def pkg_template(
+    name: str = typer.Argument(..., help="New demo package name (snake_case)"),
+    robot_type: str = typer.Option("diff_drive", "--type", "-t", help="Robot type: diff_drive, ackermann, mecanum"),
+) -> None:
+    """Generate a new demo package from template."""
+    from lappa.config import DEMOS_ROOT
+    import shutil
+    template_name = f"{robot_type}_2w" if robot_type == "diff_drive" else f"{robot_type}_4w"
+    src = DEMOS_ROOT / template_name
+    if not src.exists():
+        available = [d.name for d in DEMOS_ROOT.iterdir() if d.is_dir() and not d.name.startswith('.')]
+        rprint(f"[red]Template {template_name} not found.[/red] Available: {available}")
+        raise typer.Exit(1)
+    dest = DEMOS_ROOT / name
+    if dest.exists():
+        rprint(f"[red]Package {name} already exists.[/red]")
+        raise typer.Exit(1)
+    shutil.copytree(src, dest)
+    # Replace package name in setup.py and package.xml
+    for f in dest.rglob("setup.py"):
+        content = f.read_text()
+        f.write_text(content.replace(template_name, name))
+    for f in dest.rglob("package.xml"):
+        content = f.read_text()
+        f.write_text(content.replace(template_name, name))
+    rprint(f"[green]Created[/green] {dest}")
+    rprint(f"cd {dest} && colcon build")
+
+
 @model_app.command("presets")
 def model_presets() -> None:
     for p in models3d.list_presets():
