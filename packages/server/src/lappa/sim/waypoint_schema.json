@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "WaypointMarker",
+  "description": "A named waypoint marker in a Lappa simulation world",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Human-readable label"
+    },
+    "x": {
+      "type": "number",
+      "description": "X coordinate in world meters"
+    },
+    "y": {
+      "type": "number",
+      "description": "Y coordinate in world meters"
+    },
+    "theta": {
+      "type": "number",
+      "description": "Orientation in radians"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Semantic tags (patrol, charge, dock, etc)"
+    },
+    "radius_m": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Acceptance radius in meters"
+    }
+  },
+  "required": [
+    "name",
+    "x",
+    "y",
+    "tags"
+  ],
+  "additionalProperties": false
+}
