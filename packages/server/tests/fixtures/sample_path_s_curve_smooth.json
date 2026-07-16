@@ -1,0 +1,17 @@
+{
+    "name": "s_curve_smooth",
+    "points": [
+        [0, 1],
+        [1, 1.2],
+        [2, 1.8],
+        [3, 2.2],
+        [4, 2.0],
+        [5, 1.5],
+        [6, 1.0],
+        [7, 0.8],
+        [8, 1.0]
+    ],
+    "path_length_m": 8.55850692876998,
+    "expected_net_displacement_m": 8.0,
+    "note": "Smooth S-curve: gentle inflection at midpoint"
+}
