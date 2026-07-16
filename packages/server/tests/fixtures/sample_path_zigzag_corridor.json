@@ -1,0 +1,28 @@
+{
+  "name": "zigzag_corridor",
+  "points": [
+    [
+      0,
+      0
+    ],
+    [
+      2,
+      3
+    ],
+    [
+      4,
+      0
+    ],
+    [
+      6,
+      3
+    ],
+    [
+      8,
+      0
+    ]
+  ],
+  "path_length_m": 14.422205,
+  "expected_net_displacement_m": 8.0,
+  "note": "Zigzag corridor (3 zig segments, 2.4m wide)"
+}
