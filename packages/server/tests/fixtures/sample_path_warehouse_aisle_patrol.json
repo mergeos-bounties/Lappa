@@ -1,0 +1,13 @@
+{
+    "name": "warehouse_aisle_patrol",
+    "points": [
+        [0.0, 0.0],
+        [0.0, 8.0],
+        [1.5, 8.0],
+        [1.5, 0.0],
+        [0.0, 0.0]
+    ],
+    "path_length_m": 19.0,
+    "expected_net_displacement_m": 0.0,
+    "note": "Warehouse aisle patrol: 1.5m wide x 8.0m long aisle, start-to-start loop"
+}
