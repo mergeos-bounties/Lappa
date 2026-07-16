@@ -78,6 +78,49 @@ def _path_stats(points: list[tuple[float, float]]) -> dict[str, float | int]:
     }
 
 
+def _resample(
+    points: list[tuple[float, float]], step_m: float
+) -> list[tuple[float, float]]:
+    """Resample a polyline at fixed step meters.
+
+    Walks along each segment inserting points every *step_m*.
+    The first and last original points are always included.
+    """
+    if step_m <= 0:
+        raise ValueError("step_m must be positive")
+    if len(points) < 2:
+        return list(points)
+
+    result: list[tuple[float, float]] = [points[0]]
+    remaining = 0.0
+
+    def _maybe_append(pt: tuple[float, float]) -> None:
+        """Append pt if it differs from the last point."""
+        last = result[-1]
+        if abs(pt[0] - last[0]) > 1e-12 or abs(pt[1] - last[1]) > 1e-12:
+            result.append(pt)
+
+    for a, b in zip(points, points[1:]):
+        seg_x = b[0] - a[0]
+        seg_y = b[1] - a[1]
+        seg_len = math.hypot(seg_x, seg_y)
+        if seg_len < 1e-12:
+            continue
+
+        # Walk from the first step boundary along this segment
+        dist = step_m - remaining if remaining > 0 else step_m
+        while dist < seg_len + 1e-12:
+            t = min(dist / seg_len, 1.0) if seg_len > 0 else 0.0
+            _maybe_append((a[0] + t * seg_x, a[1] + t * seg_y))
+            dist += step_m
+        remaining = dist - seg_len
+
+    # Ensure last point is included
+    _maybe_append(points[-1])
+
+    return result
+
+
 @app.command("version")
 def version_cmd() -> None:
     rprint({"version": __version__})
@@ -208,6 +251,37 @@ def path_stats_cmd(
 ) -> None:
     """Print path length and net displacement for a polyline fixture."""
     rprint(_path_stats(_path_points_from_fixture(file)))
+
+
+@path_app.command("resample")
+def path_resample_cmd(
+    file: Path = typer.Option(
+        ...,
+        "--file",
+        "-f",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        help="JSON fixture with a points array.",
+    ),
+    step_m: float = typer.Option(
+        0.5,
+        "--step-m",
+        "-s",
+        min=0.001,
+        help="Step size in meters for resampling.",
+    ),
+) -> None:
+    """Resample a polyline fixture at fixed step meters and print new length and points."""
+    points = _path_points_from_fixture(file)
+    resampled = _resample(points, step_m)
+    stats = _path_stats(resampled)
+    stats["step_m"] = step_m
+    rprint(stats)
+    console.print("[dim]Points:[/dim]")
+    for px, py in resampled:
+        console.print(f"  [{px:.4f}, {py:.4f}]")
 
 
 @workspace_app.command("open")
