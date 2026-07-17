@@ -31,6 +31,7 @@
 - [Quick start](#quick-start)
 - [CLI reference](#cli-reference)
 - [Robot demos](#robot-demos)
+- [Coordinate Conventions](docs/coordinate-conventions.md)
 - [3D models & packager](#3d-models--packager)
 - [ROS2 versions](#ros2-versions)
 - [HTTP API (optional)](#http-api-optional)
