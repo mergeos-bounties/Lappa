@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 
 from lappa.cli import _resample, _path_stats
 
