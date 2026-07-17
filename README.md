@@ -40,6 +40,7 @@
 - [Repository layout](#repository-layout)
 - [Development](#development)
 - [MergeOS bounties](#mergeos-bounties)
+- [Path fixture precision rules](docs/path-fixture-precision.md)
 - [License](#license)
 
 ---
