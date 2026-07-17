@@ -286,6 +286,12 @@ def api_docker_launch_status() -> dict:
     return docker_bridge.launch_status()
 
 
+@app.get("/api/docker/launch/logs")
+def api_docker_launch_logs(after: int = 0, limit: int = 200) -> dict:
+    """Poll redacted Docker/native launch logs using the returned cursor."""
+    return docker_bridge.launch_logs(after=after, limit=limit)
+
+
 # --- ROS2 version ---
 @app.get("/api/ros2/versions")
 def api_ros2_versions() -> dict:

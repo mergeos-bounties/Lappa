@@ -500,6 +500,15 @@ def docker_launch_stop() -> None:
     rprint(docker_bridge.stop_launch())
 
 
+@docker_app.command("logs")
+def docker_logs(
+    after: int = typer.Option(0, "--after", help="Only return events after this cursor"),
+    limit: int = typer.Option(200, "--limit", help="Maximum events to return"),
+) -> None:
+    """Read redacted Docker/native launch logs for IDE and automation clients."""
+    rprint(docker_bridge.launch_logs(after=after, limit=limit))
+
+
 @ros2_app.command("list")
 def ros2_list() -> None:
     table = Table(title="ROS2 versions")

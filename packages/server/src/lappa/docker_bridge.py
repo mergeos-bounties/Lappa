@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import threading
 import time
+from collections import deque
 from pathlib import Path
 from typing import Any
 
@@ -26,15 +28,118 @@ DOCKER_INSTALL_URL = "https://docs.docker.com/desktop/setup/install/windows-inst
 
 class _LaunchState:
     def __init__(self) -> None:
-        self.lock = threading.Lock()
+        self.lock = threading.RLock()
         self.demo: str | None = None
         self.proc: subprocess.Popen | None = None
         self.started_at: float | None = None
         self.last_log: str = ""
         self.mode: str = "idle"  # idle | docker_runtime | docker_launch
+        self.log_events: deque[dict[str, Any]] = deque(maxlen=2000)
+        self.next_log_seq = 1
+        self.docker_tail: list[str] = []
 
 
 _STATE = _LaunchState()
+
+_SECRET_ASSIGNMENT = re.compile(
+    r"(?i)\b(password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key|"
+    r"authorization)\b(\s*[:=]\s*)(?:\"[^\"]*\"|'[^']*'|[^\s,;]+)"
+)
+_AUTHORIZATION_VALUE = re.compile(
+    r"(?i)\bAuthorization(\s*[:=]\s*)(?:(?:Bearer|Basic)\s+)?[^\s,;]+"
+)
+_BEARER_TOKEN = re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._~+/=-]+")
+_URL_CREDENTIALS = re.compile(r"(?i)(https?://)[^/\s:@]+:[^@\s/]+@")
+_KNOWN_TOKEN = re.compile(
+    r"\b(?:gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|"
+    r"AKIA[A-Z0-9]{16})\b"
+)
+
+
+def redact_log_text(text: str) -> str:
+    """Remove common credentials before log text reaches an API or IDE widget."""
+    clean = _AUTHORIZATION_VALUE.sub(r"Authorization\1[REDACTED]", str(text))
+    clean = _SECRET_ASSIGNMENT.sub(lambda match: f"{match.group(1)}{match.group(2)}[REDACTED]", clean)
+    clean = _BEARER_TOKEN.sub("Bearer [REDACTED]", clean)
+    clean = _URL_CREDENTIALS.sub(r"\1[REDACTED]@", clean)
+    return _KNOWN_TOKEN.sub("[REDACTED]", clean)
+
+
+def _append_log(text: str, *, source: str, stream: str = "stdout") -> None:
+    lines = str(text or "").splitlines()
+    if not lines:
+        return
+    with _STATE.lock:
+        for line in lines:
+            event = {
+                "seq": _STATE.next_log_seq,
+                "time": time.time(),
+                "source": source,
+                "stream": stream,
+                "text": redact_log_text(line),
+            }
+            _STATE.log_events.append(event)
+            _STATE.next_log_seq += 1
+
+
+def record_native_log(text: str, *, stream: str = "stdout") -> None:
+    """Publish a native-simulation message to the shared IDE launch-log stream."""
+    _append_log(text, source="native", stream=stream)
+
+
+def clear_launch_logs() -> None:
+    """Reset the in-memory stream. Primarily useful for a fresh IDE/test session."""
+    with _STATE.lock:
+        _STATE.log_events.clear()
+        _STATE.next_log_seq = 1
+        _STATE.docker_tail = []
+
+
+def _ingest_docker_tail(text: str) -> None:
+    """Append only the new suffix from a repeatedly-polled Docker log tail."""
+    new_lines = [redact_log_text(line) for line in str(text or "").splitlines()]
+    if not new_lines:
+        return
+    with _STATE.lock:
+        previous = _STATE.docker_tail
+        overlap = 0
+        for size in range(min(len(previous), len(new_lines)), 0, -1):
+            if previous[-size:] == new_lines[:size]:
+                overlap = size
+                break
+        _STATE.docker_tail = new_lines[-250:]
+        for line in new_lines[overlap:]:
+            _append_log(line, source="docker", stream="stdout")
+
+
+def launch_logs(
+    after: int = 0,
+    limit: int = 200,
+    *,
+    poll_docker: bool = True,
+) -> dict[str, Any]:
+    """Return redacted launch-log events after a cursor, optionally polling Docker."""
+    after = max(0, int(after))
+    limit = max(1, min(int(limit), 500))
+    with _STATE.lock:
+        should_poll = poll_docker and _STATE.mode == "docker_launch"
+    if should_poll and docker_available():
+        code, out, err = _exec_ros2_ws(["logs", "250"], timeout=10.0)
+        if code == 0:
+            _ingest_docker_tail(out)
+        elif err:
+            _append_log(err, source="docker", stream="stderr")
+    with _STATE.lock:
+        matching = [dict(event) for event in _STATE.log_events if event["seq"] > after]
+        events = matching[:limit]
+        cursor = events[-1]["seq"] if events else after
+        earliest = _STATE.log_events[0]["seq"] if _STATE.log_events else None
+    return {
+        "events": events,
+        "cursor": cursor,
+        "has_more": len(matching) > len(events),
+        "truncated": bool(earliest is not None and after and after < earliest - 1),
+    }
 
 
 def docker_available() -> bool:
@@ -315,6 +420,7 @@ def status() -> dict[str, Any]:
 
 
 def start_runtime(workspace: Path | None = None) -> dict[str, Any]:
+    _append_log("Starting Docker ROS2 runtime", source="docker")
     st = status()
     if not st["available"]:
         return {"ok": False, **st}
@@ -338,6 +444,8 @@ def start_runtime(workspace: Path | None = None) -> dict[str, Any]:
         timeout=600.0,
         env=compose_env,
     )
+    _append_log(out, source="docker")
+    _append_log(err, source="docker", stream="stderr")
     with _STATE.lock:
         if code == 0:
             _STATE.mode = "docker_runtime"
@@ -353,6 +461,7 @@ def start_runtime(workspace: Path | None = None) -> dict[str, Any]:
 
 
 def stop_runtime() -> dict[str, Any]:
+    _append_log("Stopping Docker ROS2 runtime", source="docker")
     stop_launch()
     compose = DOCKER_DIR / "docker-compose.yml"
     if not compose.is_file():
@@ -474,6 +583,10 @@ def launch_demo(demo: str, *, ensure_up: bool = True, rebuild: bool = True) -> d
     pkg, launch_file = resolved
     selected = get_selected()
     distro = selected.get("id", "humble")
+    _append_log(
+        f"Preparing ros2 launch {pkg} {launch_file} (ROS_DISTRO={distro})",
+        source="docker",
+    )
 
     if ensure_up:
         up = _ensure_container()
@@ -489,8 +602,11 @@ def launch_demo(demo: str, *, ensure_up: bool = True, rebuild: bool = True) -> d
 
     # Real ROS2 package path: build then ros2 launch <package> <file>
     if rebuild:
+        _append_log(f"colcon build --packages-select {pkg}", source="docker")
         bcode, bout, berr = _exec_ros2_ws(["build", pkg], timeout=600.0)
         build_log = (bout + "\n" + berr).strip()
+        _append_log(bout, source="docker")
+        _append_log(berr, source="docker", stream="stderr")
         if bcode != 0:
             with _STATE.lock:
                 _STATE.last_log = build_log[-2000:]
@@ -515,6 +631,8 @@ def launch_demo(demo: str, *, ensure_up: bool = True, rebuild: bool = True) -> d
 
     lcode, lout, lerr = _exec_ros2_ws(["launch", pkg, launch_file], timeout=120.0)
     log = (lout + "\n" + lerr).strip()
+    _append_log(lout, source="docker")
+    _append_log(lerr, source="docker", stream="stderr")
     # Confirm ROS sees the package / nodes
     scode, sout, serr = _exec_ros2_ws(["status"], timeout=40.0)
     ros_status = (sout + "\n" + serr).strip()
@@ -565,6 +683,7 @@ def launch_demo(demo: str, *, ensure_up: bool = True, rebuild: bool = True) -> d
 
 def stop_launch() -> dict[str, Any]:
     """Stop ros2 launch processes inside the container via /ros2_ws.sh stop."""
+    _append_log("Stopping ROS2 launch", source="docker")
     with _STATE.lock:
         demo = _STATE.demo
         if _STATE.proc is not None and _STATE.proc.poll() is None:
@@ -580,6 +699,8 @@ def stop_launch() -> dict[str, Any]:
         return {"ok": True, "stopped": False, "reason": "no docker"}
 
     code, out, err = _exec_ros2_ws(["stop"], timeout=20.0)
+    _append_log(out, source="docker")
+    _append_log(err, source="docker", stream="stderr")
     with _STATE.lock:
         _STATE.last_log = (out + err).strip() or _STATE.last_log
         if _STATE.mode == "docker_launch":
