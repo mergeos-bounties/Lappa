@@ -1388,6 +1388,7 @@ class WelcomePage(QFrame):
 class MainWindow(QMainWindow):
     docker_operation_finished = Signal(str, object, object)
     docker_twist_finished = Signal(object)
+    launch_logs_ready = Signal(object)
 
     def __init__(
         self,
@@ -1416,6 +1417,8 @@ class MainWindow(QMainWindow):
         self._docker_busy = False
         self._docker_last_result: dict | None = None
         self._docker_status_cache: dict = {}
+        self._launch_log_cursor = 0
+        self._launch_log_busy = False
         self._docker_twist_lock = threading.Lock()
         self._docker_twist_pending: tuple[float, float, float] | None = None
         self._docker_twist_worker_running = False
@@ -1436,6 +1439,7 @@ class MainWindow(QMainWindow):
         self._sim_snapshot_last_poll = 0.0
         self.docker_operation_finished.connect(self._finish_docker_operation)
         self.docker_twist_finished.connect(self._finish_docker_twist)
+        self.launch_logs_ready.connect(self._apply_launch_logs)
         self.setAcceptDrops(True)
 
         self.setWindowTitle(f"Lappa - ROS2 Package IDE - v{__version__}")
@@ -1477,6 +1481,10 @@ class MainWindow(QMainWindow):
         self._install_shortcuts()
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick_sim)
+        self._launch_log_timer = QTimer(self)
+        self._launch_log_timer.setInterval(1000)
+        self._launch_log_timer.timeout.connect(self._refresh_launch_logs)
+        self._launch_log_timer.start()
         self._resize_timer = QTimer(self)
         self._resize_timer.setSingleShot(True)
         self._resize_timer.timeout.connect(self._finish_resize)
@@ -2190,10 +2198,36 @@ class MainWindow(QMainWindow):
         guidance_row.addWidget(self.docker_install_button)
         layout.addLayout(guidance_row)
 
+        output_tabs = QTabWidget()
+        output_tabs.setObjectName("dockerOutputTabs")
+
+        diagnostics_page = QWidget()
+        diagnostics_layout = QVBoxLayout(diagnostics_page)
+        diagnostics_layout.setContentsMargins(4, 4, 4, 4)
         self.docker_info = QTextEdit()
         self.docker_info.setObjectName("logBox")
         self.docker_info.setReadOnly(True)
-        layout.addWidget(self.docker_info, 1)
+        diagnostics_layout.addWidget(self.docker_info)
+        output_tabs.addTab(diagnostics_page, "Diagnostics")
+
+        launch_log_page = QWidget()
+        launch_log_layout = QVBoxLayout(launch_log_page)
+        launch_log_layout.setContentsMargins(4, 4, 4, 4)
+        launch_log_header = QHBoxLayout()
+        launch_log_header.addWidget(QLabel("Live Docker / native launch output"))
+        launch_log_header.addStretch(1)
+        clear_launch_log = _button("Clear", compact=True)
+        clear_launch_log.clicked.connect(lambda: self.launch_log.clear())
+        launch_log_header.addWidget(clear_launch_log)
+        launch_log_layout.addLayout(launch_log_header)
+        self.launch_log = QPlainTextEdit()
+        self.launch_log.setObjectName("launchLogPanel")
+        self.launch_log.setReadOnly(True)
+        self.launch_log.setPlaceholderText("Launch logs appear here with secrets redacted.")
+        launch_log_layout.addWidget(self.launch_log)
+        output_tabs.addTab(launch_log_page, "Launch Logs")
+        self.docker_output_tabs = output_tabs
+        layout.addWidget(output_tabs, 1)
         self._refresh_docker()
         return tab
 
@@ -2799,6 +2833,7 @@ class MainWindow(QMainWindow):
 
     def _start_native_simulation(self, pkg: RosPackage) -> None:
         SESSION.start(pkg.name, pkg.path if pkg.path.is_dir() else None)
+        docker_bridge.record_native_log(f"Native preview started: {pkg.name}")
         self.canvas.clear_trail()
         self._sim_running = True
         self._timer.start(50)
@@ -2841,6 +2876,7 @@ class MainWindow(QMainWindow):
     def sim_stop(self) -> None:
         self.sim_zero()
         SESSION.stop()
+        docker_bridge.record_native_log("Native simulation stopped")
         self._sim_running = False
         self._timer.stop()
         self._set_simulation_open(False)
@@ -3728,6 +3764,39 @@ class MainWindow(QMainWindow):
         except Exception as exc:  # noqa: BLE001
             self.docker_guidance.setText(f"Docker status check failed: {exc}")
             self.docker_info.setPlainText(str(exc))
+
+    def _refresh_launch_logs(self) -> None:
+        if not hasattr(self, "launch_log") or self._launch_log_busy:
+            return
+        self._launch_log_busy = True
+        cursor = self._launch_log_cursor
+
+        def worker() -> None:
+            try:
+                batch = docker_bridge.launch_logs(after=cursor, limit=200)
+            except Exception as exc:  # noqa: BLE001
+                batch = {"error": str(exc), "cursor": cursor, "events": []}
+            self.launch_logs_ready.emit(batch)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _apply_launch_logs(self, result: object) -> None:
+        self._launch_log_busy = False
+        batch = result if isinstance(result, dict) else {"error": str(result)}
+        if batch.get("error"):
+            self.launch_log.appendPlainText(f"[stream/error] {batch['error']}")
+            return
+        events = batch.get("events") or []
+        for event in events:
+            source = event.get("source") or "launch"
+            stream = event.get("stream") or "stdout"
+            self.launch_log.appendPlainText(
+                f"[{source}/{stream}] {event.get('text') or ''}"
+            )
+        self._launch_log_cursor = int(batch.get("cursor") or self._launch_log_cursor)
+        if events:
+            scrollbar = self.launch_log.verticalScrollBar()
+            scrollbar.setValue(scrollbar.maximum())
 
     def _goto(self, key: str) -> None:
         """Compatibility hook for screenshot automation."""
