@@ -1,0 +1,78 @@
+"""ROS2 teleop node for warehouse aisle patrol demo."""
+
+from __future__ import annotations
+
+import math
+import sys
+from typing import List, Dict
+
+from geometry_msgs.msg import Twist
+from nav_msgs.msg import Odometry
+from rclpy.node import Node
+from sensor_msgs.msg import LaserScan
+from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
+
+class TeleopNode(Node):
+    def __init__(self, waypoints: List[Dict[str, float]]) -> None:
+        super().__init__("teleop")
+        self.waypoints = waypoints
+        self.current_index = 0
+        self.x = 0.0
+        self.y = 0.0
+        self.th = 0.0
+        self.cmd = Twist()
+        self.pub_odom = self.create_publisher(Odometry, "odom", QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT, durability=DurabilityPolicy.TRANSIENT_LOCAL))
+        self.pub_scan = self.create_publisher(LaserScan, "scan", QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT, durability=DurabilityPolicy.TRANSIENT_LOCAL))
+        self.create_timer(0.1, self._tick)
+
+    def _tick(self) -> None:
+        waypoint = self.waypoints[self.current_index]
+        vx = waypoint['x'] - self.x
+        vy = waypoint['y'] - self.y
+        distance = math.hypot(vx, vy)
+        if distance < 0.1:
+            self.current_index = (self.current_index + 1) % len(self.waypoints)
+            waypoint = self.waypoints[self.current_index]
+            vx = waypoint['x'] - self.x
+            vy = waypoint['y'] - self.y
+
+        self.x += vx * 0.1
+        self.y += vy * 0.1
+        self.th = math.atan2(vy, vx)
+
+        now = self.get_clock().now().to_msg()
+        odom = Odometry()
+        odom.header.stamp = now
+        odom.header.frame_id = "odom"
+        odom.child_frame_id = "base_link"
+        odom.pose.pose.position.x = self.x
+        odom.pose.pose.position.y = self.y
+        odom.pose.pose.orientation.z = math.sin(self.th / 2.0)
+        odom.pose.pose.orientation.w = math.cos(self.th / 2.0)
+        odom.twist.twist.linear.x = vx
+        odom.twist.twist.linear.y = vy
+        self.pub_odom.publish(odom)
+
+        scan = LaserScan()
+        scan.header.stamp = now
+        scan.header.frame_id = "laser"
+        scan.angle_min = -math.pi
+        scan.angle_max = math.pi
+        scan.angle_increment = (2 * math.pi) / 36
+        scan.range_min = 0.1
+        scan.range_max = 8.0
+        scan.ranges = [3.0] * 36  # Placeholder scan data
+        self.pub_scan.publish(scan)
+
+def main() -> None:
+    try:
+        import rclpy
+        from rclpy.node import Node
+    except ImportError:
+        print("[warehouse_aisle_patrol] rclpy not available; use Lappa native sim offline, or Docker: lappa docker launch --demo warehouse_aisle_patrol")
+        return
+
+    waypoints = [
+        {"x": 0.0, "y": 0.0},
+        {"x": 0.0, "y": 8.0},
+       
