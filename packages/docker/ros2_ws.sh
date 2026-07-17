@@ -4,6 +4,7 @@
 #   /ros2_ws.sh build [pkg...]
 #   /ros2_ws.sh launch <pkg> [launch_file]
 #   /ros2_ws.sh status
+#   /ros2_ws.sh logs [line_count]
 #   /ros2_ws.sh stop
 #   /ros2_ws.sh twist <linear_x> <linear_y> <angular_z>
 #   /ros2_ws.sh auto-map <on|off>
@@ -162,6 +163,18 @@ cmd_status() {
   fi
 }
 
+cmd_logs() {
+  local line_count="${1:-200}"
+  if ! [[ "$line_count" =~ ^[0-9]+$ ]]; then
+    echo "usage: $0 logs [line_count]" >&2
+    return 2
+  fi
+  line_count=$(( line_count > 500 ? 500 : line_count ))
+  if [ -f /tmp/lappa_ros2_launch.log ]; then
+    tail -n "$line_count" /tmp/lappa_ros2_launch.log
+  fi
+}
+
 cmd_stop() {
   stop_recorded_launch
   echo "[lappa] stopped ros2 launch processes"
@@ -193,11 +206,12 @@ case "${1:-}" in
   build) shift; cmd_build "$@" ;;
   launch) shift; cmd_launch "$@" ;;
   status) cmd_status ;;
+  logs) shift; cmd_logs "$@" ;;
   stop) cmd_stop ;;
   twist) shift; cmd_twist "$@" ;;
   auto-map) shift; cmd_auto_map "$@" ;;
   *)
-    echo "usage: $0 {build|launch|status|stop|twist|auto-map} ..." >&2
+    echo "usage: $0 {build|launch|status|logs|stop|twist|auto-map} ..." >&2
     exit 1
     ;;
 esac
