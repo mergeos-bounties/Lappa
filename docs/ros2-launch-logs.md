@@ -34,4 +34,4 @@ lappa docker logs --after 0 --limit 200
 - [x] Incremental Docker/native messages with source and stream labels.
 - [x] Secret values displayed as `[REDACTED]`.
 - [x] Cursor and overlapping-tail regression tests.
-- [x] Screenshot: [ROS2 launch log panel](screenshots/ros2-launch-log-panel.png).
+- [x] Screenshot: [ROS2 launch log panel](https://github.com/user-attachments/assets/e87d96dc-4ca7-4020-895e-34988b3e9aa4).
