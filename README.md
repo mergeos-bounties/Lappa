@@ -362,6 +362,7 @@ Lappa does not ship a browser or web frontend. This loopback API is an optional 
 | `POST` | `/api/docker/start` | Start container (demos → `/ws/src`) |
 | `POST` | `/api/docker/launch` | `ros2 launch` active demo in container |
 | `POST` | `/api/docker/launch/stop` | Stop launch processes |
+| `GET` | `/api/docker/launch/logs?after=<cursor>` | Incremental redacted launch logs |
 | `GET`/`PUT` | `/api/files` | Open / save package files (IDE) |
 
 Prefer the **Qt desktop IDE** for day-to-day package work; the API is for automation.
