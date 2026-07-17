@@ -1,0 +1,38 @@
+
+# Path Fixtures in Lappa
+
+## Coordinate Units
+
+All path fixtures in Lappa are defined using meters as the unit of measurement. This ensures that the coordinates are consistent and easy to interpret across different simulations.
+
+## Origin Conventions
+
+The origin of the coordinate system is located at the bottom-left corner of the simulation environment. This convention helps in standardizing the placement and movement of robots within the simulation.
+
+### Example Path Fixture
+
+```json
+{
+  "waypoints": [
+    {"x": 0.0, "y": 0.0},
+    {"x": 1.5, "y": 8.0},
+    {"x": 1.5, "y": 0.0},
+    {"x": 0.0, "y": 0.0}
+  ]
+}
+```
+
+In this example, the robot starts at the origin `(0.0, 0.0)`, drives up the aisle to `(0.0, 8.0)`, strafes across to `(1.5, 8.0)`, drives back down to `(1.5, 0.0)`, and finally strafes back to the start `(0.0, 0.0)`.
+
+## Usage
+
+When defining path fixtures, ensure that the coordinates are in meters and follow the origin convention described above. This will help in maintaining consistency and making the simulations more interpretable.
+
+## Additional Resources
+
+- [Lappa README](../README.md#path-fixtures)
+- [Simulation Documentation](docs/simulation.md)
+
+---
+
+These changes add a section to the `README.md` file and create a new `docs/path-fixtures.md` file to document the coordinate units and origin conventions for path fixtures.

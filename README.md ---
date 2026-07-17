@@ -1,0 +1,29 @@
+
+## Path Fixtures
+
+Path fixtures in Lappa are defined in meters with the origin at the bottom-left corner of the simulation environment. This ensures consistency across different simulations and makes it easier to interpret and compare results.
+
+### Example Path Fixture
+
+```json
+{
+  "waypoints": [
+    {"x": 0.0, "y": 0.0},
+    {"x": 1.5, "y": 8.0},
+    {"x": 1.5, "y": 0.0},
+    {"x": 0.0, "y": 0.0}
+  ]
+}
+```
+
+In this example, the robot starts at the origin `(0.0, 0.0)`, drives up the aisle to `(0.0, 8.0)`, strafes across to `(1.5, 8.0)`, drives back down to `(1.5, 0.0)`, and finally strafes back to the start `(0.0, 0.0)`.
+
+### Origin Conventions
+
+- The origin `(0.0, 0.0)` is located at the bottom-left corner of the simulation environment.
+- Coordinates are defined in meters.
+- The x-axis points to the right, and the y-axis points upwards.
+
+### Documentation Link
+
+For more detailed information, refer to the [Path Fixtures Documentation](docs/path-fixtures.md).
