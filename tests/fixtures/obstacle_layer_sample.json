@@ -1,0 +1,62 @@
+{
+  "obstacle_layer": {
+    "grid_size": [
+      10.0,
+      10.0,
+      3.0
+    ],
+    "cell_size_m": 0.1,
+    "obstacles": [
+      {
+        "id": "barrier_001",
+        "type": "static",
+        "position": [
+          2.0,
+          3.0,
+          0.0
+        ],
+        "dimensions": [
+          0.5,
+          1.0,
+          0.05
+        ],
+        "category": "barrier"
+      },
+      {
+        "id": "cone_001",
+        "type": "static",
+        "position": [
+          5.0,
+          5.0,
+          0.0
+        ],
+        "dimensions": [
+          0.3,
+          0.6,
+          0.3
+        ],
+        "category": "cone"
+      },
+      {
+        "id": "vehicle_001",
+        "type": "dynamic",
+        "position": [
+          7.0,
+          2.0,
+          0.0
+        ],
+        "dimensions": [
+          2.0,
+          1.0,
+          1.5
+        ],
+        "category": "vehicle"
+      }
+    ],
+    "metadata": {
+      "timestamp": "2026-07-18T12:00:00Z",
+      "scenario": "warehouse",
+      "generated_by": "fixture_generator"
+    }
+  }
+}
