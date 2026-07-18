@@ -8,14 +8,18 @@ import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-pytest.importorskip("PySide6")
-
-from PySide6.QtCore import QSettings, Qt  # noqa: E402
-from PySide6.QtWidgets import QApplication, QPushButton, QToolButton  # noqa: E402
+QtCore = pytest.importorskip("PySide6.QtCore", exc_type=ImportError)
+QtWidgets = pytest.importorskip("PySide6.QtWidgets", exc_type=ImportError)
+QSettings = QtCore.QSettings
+Qt = QtCore.Qt
+QApplication = QtWidgets.QApplication
+QPushButton = QtWidgets.QPushButton
+QToolButton = QtWidgets.QToolButton
 
 from lappa.config import DEMOS_ROOT  # noqa: E402
 from lappa.gui.main_window import MainWindow, SimCanvas  # noqa: E402
 from lappa.package_loader import load_package  # noqa: E402
+from lappa.sim.session import SESSION  # noqa: E402
 
 
 def _docker_unavailable() -> dict:
@@ -51,6 +55,27 @@ def test_workbench_buttons_expose_tooltips_and_accessible_names(
     assert all(button.accessibleName().strip() for button in push_buttons)
     assert all(button.toolTip().strip() for button in tool_buttons)
     assert all(button.accessibleName().strip() for button in tool_buttons)
+
+    window.close()
+    app.processEvents()
+
+
+def test_command_palette_exposes_required_offline_actions(tmp_path, monkeypatch):
+    app = QApplication.instance() or QApplication([])
+    monkeypatch.setattr("lappa.gui.main_window.docker_bridge.status", _docker_unavailable)
+    settings = QSettings(str(tmp_path / "commands.ini"), QSettings.Format.IniFormat)
+    window = MainWindow(show_welcome=False, settings=settings)
+
+    palette_actions = window._command_palette_actions()
+    assert {"Run Sim", "Stop", "Open Demo"}.issubset(palette_actions)
+    assert any(label.startswith("Toggle Hot Reload") for label in palette_actions)
+    assert any(action.shortcut().toString() == "Ctrl+Shift+P" for action in window.actions())
+
+    original_hot_reload = SESSION.hot_reload
+    window._toggle_hot_reload()
+    assert SESSION.hot_reload is (not original_hot_reload)
+    window._toggle_hot_reload()
+    assert SESSION.hot_reload is original_hot_reload
 
     window.close()
     app.processEvents()

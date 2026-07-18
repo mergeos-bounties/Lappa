@@ -1582,6 +1582,10 @@ class MainWindow(QMainWindow):
         b_reload = _button("Reload", compact=True)
         b_reload.setIcon(_icon("refresh"))
         b_reload.clicked.connect(self._editor_reload)
+        b_commands = _button("Commands", compact=True)
+        b_commands.setToolTip("Open command palette (Ctrl+Shift+P)")
+        b_commands.setStatusTip("Open command palette (Ctrl+Shift+P)")
+        b_commands.clicked.connect(self._open_command_palette)
         b_run = _button("Run", primary=True, compact=True)
         b_run.setIcon(_icon("play"))
         b_run.clicked.connect(self.sim_run)
@@ -1591,7 +1595,7 @@ class MainWindow(QMainWindow):
         b_docker = _button("Docker", compact=True)
         b_docker.setIcon(_icon("docker"))
         b_docker.clicked.connect(self._editor_docker_launch)
-        for button in (b_save, b_reload, b_run, b_stop, b_docker):
+        for button in (b_save, b_reload, b_commands, b_run, b_stop, b_docker):
             layout.addWidget(button)
 
         return bar
@@ -2252,6 +2256,7 @@ class MainWindow(QMainWindow):
             ("Ctrl+O", self._welcome_open_workspace, "Open workspace folder"),
             ("Ctrl+N", self._create_new_file, "New file"),
             ("Ctrl+Shift+N", self._create_new_folder, "New folder"),
+            ("Ctrl+Shift+P", self._open_command_palette, "Open command palette"),
             ("F5", self.sim_run, "Run native simulation"),
             ("Shift+F5", self.sim_stop, "Stop native simulation"),
             ("Ctrl+Shift+A", self._focus_ai_panel, "Focus AI chat"),
@@ -2262,6 +2267,63 @@ class MainWindow(QMainWindow):
             action.setShortcut(QKeySequence(sequence))
             action.triggered.connect(lambda _checked=False, slot=slot: slot())
             self.addAction(action)
+
+    def _command_palette_actions(self) -> dict[str, Callable[[], None]]:
+        hot_reload_state = "off" if SESSION.hot_reload else "on"
+        return {
+            "Run Sim": self.sim_run,
+            "Stop": self.sim_stop,
+            "Open Demo": self._command_open_demo,
+            f"Toggle Hot Reload ({hot_reload_state})": self._toggle_hot_reload,
+        }
+
+    def _open_command_palette(self) -> None:
+        actions = self._command_palette_actions()
+        choice, ok = QInputDialog.getItem(
+            self,
+            "Command Palette",
+            "Run command:",
+            list(actions),
+            0,
+            False,
+        )
+        if ok and choice:
+            actions[str(choice)]()
+
+    def _command_open_demo(self) -> None:
+        if not self.packages:
+            self._status("No demo packages available")
+            return
+        labels = [self._package_label(pkg) for pkg in self.packages]
+        choice, ok = QInputDialog.getItem(
+            self,
+            "Open Demo",
+            "Demo package:",
+            labels,
+            max(0, self.demo_combo.currentIndex()) if hasattr(self, "demo_combo") else 0,
+            False,
+        )
+        if not ok or not choice:
+            return
+        index = labels.index(str(choice))
+        pkg = self.packages[index]
+        self._editor_load_package(pkg)
+        if hasattr(self, "demo_combo"):
+            combo_index = self.demo_combo.findData(self._package_key(pkg))
+            if combo_index >= 0:
+                self.demo_combo.setCurrentIndex(combo_index)
+        self._enter_workbench()
+        self._status(f"Opened demo {pkg.name}")
+
+    def _toggle_hot_reload(self) -> None:
+        enabled = not SESSION.hot_reload
+        SESSION.hot_reload = enabled
+        if enabled and SESSION.package:
+            SESSION.start_watch_unlocked()
+        elif not enabled:
+            SESSION.stop_watch_unlocked()
+        state = "enabled" if enabled else "disabled"
+        self._status(f"Hot reload {state}")
 
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)
