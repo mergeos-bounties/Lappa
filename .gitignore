@@ -23,3 +23,4 @@ packages/server/.workspaces/
 .idea/
 .vscode/
 .lappa_runtime/
+.lappa/

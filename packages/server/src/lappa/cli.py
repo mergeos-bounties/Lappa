@@ -16,6 +16,7 @@ from lappa import (
     docker_bridge,
     models3d,
     packager,
+    presence,
     ros2_versions,
     workspace as workspace_store,
 )
@@ -32,6 +33,7 @@ ros2_app = typer.Typer(help="ROS2 distro selection")
 pkg_app = typer.Typer(help="Bundle / package ROS2 pkgs")
 model_app = typer.Typer(help="Procedural 3D meshes")
 path_app = typer.Typer(help="Path fixture tools")
+presence_app = typer.Typer(help="Multi-user workspace presence")
 app.add_typer(workspace_app, name="workspace")
 app.add_typer(demos_app, name="demos")
 app.add_typer(sim_app, name="sim")
@@ -40,6 +42,7 @@ app.add_typer(ros2_app, name="ros2")
 app.add_typer(pkg_app, name="package")
 app.add_typer(model_app, name="model")
 app.add_typer(path_app, name="path")
+app.add_typer(presence_app, name="presence")
 console = Console()
 
 
@@ -660,6 +663,120 @@ def model_build_robot(
 def model_scene(package: str = typer.Argument(...)) -> None:
     """Print package scene3d JSON for the WebGL viewer."""
     rprint(models3d.package_scene3d(package))
+
+
+def _presence_store(directory: Path | None, ttl: float) -> presence.PresenceStore:
+    return presence.PresenceStore(directory, ttl_s=ttl)
+
+
+def _presence_table(peers: list[presence.Peer], title: str) -> Table:
+    table = Table(title=title)
+    table.add_column("User")
+    table.add_column("Host")
+    table.add_column("Package")
+    table.add_column("File")
+    table.add_column("Sim")
+    table.add_column("Seen")
+    table.add_column("Session")
+    for peer in peers:
+        mark = " (you)" if peer.is_self else ""
+        state = "" if peer.online else " [dim]stale[/dim]"
+        table.add_row(
+            f"{peer.user}{mark}",
+            peer.host or "-",
+            peer.package or "-",
+            peer.file or "-",
+            "yes" if peer.sim else "-",
+            f"{peer.age_s:.0f}s ago{state}",
+            peer.session_id,
+        )
+    return table
+
+
+@presence_app.command("list")
+def presence_list(
+    directory: Path = typer.Option(None, "--dir", help="Presence directory override."),
+    ttl: float = typer.Option(presence.DEFAULT_TTL_S, "--ttl", help="Seconds a record stays live."),
+    stale: bool = typer.Option(False, "--stale", help="Include records past their TTL."),
+    as_json: bool = typer.Option(False, "--json", help="Machine-readable output."),
+) -> None:
+    """Show everybody currently in this workspace."""
+    store = _presence_store(directory, ttl)
+    snapshot = store.snapshot(include_stale=stale)
+    if as_json:
+        rprint(snapshot)
+        return
+    peers = store.peers(include_stale=stale)
+    console.print(_presence_table(peers, f"Presence — {store.dir}"))
+    if not peers:
+        console.print("[dim]nobody here (records appear once a session joins)[/dim]")
+
+
+@presence_app.command("where")
+def presence_where(
+    file: str = typer.Argument(..., help="Package-relative file path."),
+    package: str = typer.Option(None, "--package", help="Limit to one package."),
+    directory: Path = typer.Option(None, "--dir"),
+    ttl: float = typer.Option(presence.DEFAULT_TTL_S, "--ttl"),
+) -> None:
+    """Show who else has a file open before you overwrite their save."""
+    store = _presence_store(directory, ttl)
+    peers = store.peers_on_file(file, package=package)
+    if not peers:
+        rprint({"file": file, "package": package, "peers": []})
+        return
+    console.print(_presence_table(peers, f"Editing {file}"))
+
+
+@presence_app.command("session")
+def presence_session(
+    user: str = typer.Option(None, "--user", help="Display name (default: OS user)."),
+    package: str = typer.Option(None, "--package"),
+    file: str = typer.Option(None, "--file"),
+    sim: bool = typer.Option(False, "--sim", help="Advertise a running sim."),
+    hold: float = typer.Option(30.0, "--hold", help="Seconds to stay joined."),
+    interval: float = typer.Option(presence.HEARTBEAT_S, "--interval"),
+    directory: Path = typer.Option(None, "--dir"),
+    ttl: float = typer.Option(presence.DEFAULT_TTL_S, "--ttl"),
+) -> None:
+    """Join, heartbeat for a while, then leave.
+
+    Useful to demo multi-user presence on one machine: run this in one
+    terminal and `lappa presence list` in another.
+    """
+    store = presence.PresenceStore(directory, ttl_s=ttl, user=user)
+    store.join(package=package, file=file, sim=sim)
+    rprint({"joined": True, "session_id": store.session_id, "dir": str(store.dir)})
+    deadline = time.monotonic() + max(0.0, hold)
+    try:
+        while time.monotonic() < deadline:
+            time.sleep(min(max(interval, 0.1), max(deadline - time.monotonic(), 0.1)))
+            store.heartbeat()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        # Ctrl-C must not leave a ghost peer sitting in the list.
+        store.leave()
+    rprint({"left": True, "session_id": store.session_id})
+
+
+@presence_app.command("reap")
+def presence_reap(
+    directory: Path = typer.Option(None, "--dir"),
+    ttl: float = typer.Option(presence.DEFAULT_TTL_S, "--ttl"),
+) -> None:
+    """Remove records left behind by sessions that died long ago."""
+    store = _presence_store(directory, ttl)
+    removed = store.reap()
+    rprint({"removed": removed, "dir": str(store.dir), "remaining": len(store.records())})
+
+
+@presence_app.command("dir")
+def presence_dir_cmd(
+    directory: Path = typer.Option(None, "--dir"),
+) -> None:
+    """Print the directory peers share (LAPPA_PRESENCE_DIR wins)."""
+    rprint({"dir": str(presence.presence_dir(directory))})
 
 
 @app.command("serve")
