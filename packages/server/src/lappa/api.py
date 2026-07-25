@@ -8,6 +8,7 @@ from lappa import (
     docker_bridge,
     models3d,
     packager,
+    presence as presence_store,
     ros2_versions,
     urdf,
     workspace as workspace_store,
@@ -39,6 +40,18 @@ def _active_package():
         _active = pkg.path
         return pkg
     raise HTTPException(404, "no packages")
+
+
+def _presence_guard(call):
+    """Run a presence call, swallowing share failures.
+
+    Presence is a convenience layer: an unreachable network share must never
+    turn a successful save into a 500.
+    """
+    try:
+        return call()
+    except (presence_store.PresenceError, OSError):
+        return None
 
 
 class FileBody(BaseModel):
@@ -108,6 +121,13 @@ class BuildRobotBody(BaseModel):
     kind: str | None = None
 
 
+class PresenceBody(BaseModel):
+    user: str | None = None
+    package: str | None = None
+    file: str | None = None
+    sim: bool | None = None
+
+
 @app.get("/health")
 def health() -> dict[str, Any]:
     return {
@@ -173,12 +193,25 @@ def api_read(path: str) -> dict:
 @app.put("/api/files")
 def api_write(body: FileBody) -> dict:
     pkg = _active_package()
+    store = presence_store.SESSION_PRESENCE
+    # Advisory only: report who else had this file open, never refuse the save.
+    conflicts = _presence_guard(lambda: store.peers_on_file(body.path, package=pkg.name)) or []
     try:
         write_file(pkg, body.path, body.content)
     except ValueError as e:
         raise HTTPException(400, str(e)) from e
     SESSION.notify_file_change(body.path)
-    return {"ok": True, "path": body.path}
+    # Only refreshes a record this session already created; a read-only client
+    # never becomes a peer just by saving.
+    _presence_guard(lambda: store.touch(package=pkg.name, file=body.path))
+    return {
+        "ok": True,
+        "path": body.path,
+        "conflicts": [
+            {"user": p.user, "host": p.host, "session_id": p.session_id, "age_s": round(p.age_s, 1)}
+            for p in conflicts
+        ],
+    }
 
 
 @app.post("/api/sim/start")
@@ -241,6 +274,70 @@ def api_sim_trajectory_clear() -> dict:
 def api_hot_reload(body: HotReloadBody) -> dict:
     SESSION.hot_reload = body.enabled
     return {"hot_reload": SESSION.hot_reload}
+
+
+# --- Multi-user presence ---
+@app.get("/api/presence")
+def api_presence(include_stale: bool = False) -> dict:
+    """Who is in this workspace right now. Read-only: never creates a record."""
+    store = presence_store.SESSION_PRESENCE
+    try:
+        return store.snapshot(include_stale=include_stale)
+    except presence_store.PresenceError as e:
+        raise HTTPException(503, str(e)) from e
+
+
+@app.post("/api/presence/join")
+def api_presence_join(body: PresenceBody | None = None) -> dict:
+    body = body or PresenceBody()
+    store = presence_store.SESSION_PRESENCE
+    if body.user:
+        store.user = body.user
+    try:
+        store.join(package=body.package, file=body.file, sim=bool(body.sim))
+    except presence_store.PresenceError as e:
+        raise HTTPException(503, str(e)) from e
+    return store.snapshot()
+
+
+@app.post("/api/presence/heartbeat")
+def api_presence_heartbeat(body: PresenceBody | None = None) -> dict:
+    body = body or PresenceBody()
+    store = presence_store.SESSION_PRESENCE
+    # Only fields the client actually sent are updated; the rest keep their
+    # previous value, so a heartbeat carrying just `file` cannot wipe `package`.
+    fields = {k: v for k, v in body.model_dump().items() if k in body.model_fields_set}
+    fields.pop("user", None)
+    try:
+        store.heartbeat(**fields)
+    except presence_store.NotJoinedError as e:
+        raise HTTPException(409, "not joined: POST /api/presence/join first") from e
+    except presence_store.PresenceError as e:
+        raise HTTPException(503, str(e)) from e
+    return store.snapshot()
+
+
+@app.post("/api/presence/leave")
+def api_presence_leave() -> dict:
+    store = presence_store.SESSION_PRESENCE
+    try:
+        left = store.leave()
+    except presence_store.PresenceError as e:
+        raise HTTPException(503, str(e)) from e
+    return {"ok": True, "left": left, "session_id": store.session_id}
+
+
+@app.get("/api/presence/file")
+def api_presence_file(path: str, package: str | None = None) -> dict:
+    """Other sessions that currently have *path* open."""
+    store = presence_store.SESSION_PRESENCE
+    if package is None:
+        try:
+            package = _active_package().name
+        except HTTPException:
+            package = None
+    peers = _presence_guard(lambda: store.peers_on_file(path, package=package)) or []
+    return {"path": path, "package": package, "peers": [p.to_dict() for p in peers]}
 
 
 @app.get("/api/docker/status")

@@ -234,6 +234,7 @@ lappa serve --port 8840   # optional local FastAPI automation API
 | `lappa model attach` | Fit-attach mesh onto a package link / URDF |
 | `lappa model build-robot` | Full multi-link robot (chassis + wheels + lidar) |
 | `lappa model scene` | Print `scene3d` JSON for a package |
+| `lappa presence list \| where \| session \| reap \| dir` | Multi-user workspace presence ([docs](docs/presence.md)) |
 | `lappa docker status` | Docker availability / distro |
 | `lappa serve` | Optional local FastAPI automation API |
 | `lappa desktop` | Launch the Qt desktop IDE |
@@ -364,6 +365,9 @@ Lappa does not ship a browser or web frontend. This loopback API is an optional 
 | `POST` | `/api/docker/launch/stop` | Stop launch processes |
 | `GET` | `/api/docker/launch/logs?after=<cursor>` | Incremental redacted launch logs |
 | `GET`/`PUT` | `/api/files` | Open / save package files (IDE) |
+| `GET` | `/api/presence` | Who else is in this workspace |
+| `POST` | `/api/presence/join` \| `/heartbeat` \| `/leave` | Announce / refresh / drop this session |
+| `GET` | `/api/presence/file?path=<rel>` | Who has that file open right now |
 
 Prefer the **Qt desktop IDE** for day-to-day package work; the API is for automation.
 
