@@ -59,6 +59,7 @@ from PySide6.QtWidgets import (
 from lappa import __version__, docker_bridge, models3d, packager, ros2_versions, workspace
 from lappa.config import DEMOS_ROOT, ensure_dirs
 from lappa.gui.styles import STYLESHEET
+from lappa.i18n import tr, set_language, get_language, VI, EN
 from lappa.package_loader import RosPackage, load_package, read_file, write_file
 from lappa.sim.engines import DEFAULT_OBSTACLES
 from lappa.sim.session import SESSION
@@ -1251,9 +1252,9 @@ class WelcomePage(QFrame):
 
         brand_stack = QVBoxLayout()
         brand_stack.setSpacing(0)
-        brand = QLabel("Lappa")
+        brand = QLabel(tr("Lappa"))
         brand.setObjectName("welcomeBrand")
-        product = QLabel("ROS2 PACKAGE IDE")
+        product = QLabel(tr("ROS2 PACKAGE IDE"))
         product.setObjectName("welcomeProduct")
         brand_stack.addWidget(brand)
         brand_stack.addWidget(product)
@@ -1264,10 +1265,10 @@ class WelcomePage(QFrame):
         brand_row.addWidget(version, 0, Qt.AlignmentFlag.AlignTop)
         stage_layout.addLayout(brand_row)
 
-        headline = QLabel("Start with a ROS2 workspace")
+        headline = QLabel(tr("Start with a ROS2 workspace"))
         headline.setObjectName("welcomeTitle")
         subtitle = QLabel(
-            "Open package source, inspect robot models, and run simulation in one workbench."
+            tr("Open package source, inspect robot models, and run simulation in one workbench.")
         )
         subtitle.setObjectName("welcomeSubtitle")
         subtitle.setWordWrap(True)
@@ -1285,21 +1286,21 @@ class WelcomePage(QFrame):
         actions_layout.setSpacing(9)
         actions_layout.addWidget(_section("Start"))
 
-        open_workspace = self._action_button("Open Workspace", "folder", primary=True)
-        open_workspace.setToolTip("Add a folder containing one or more ROS2 packages")
+        open_workspace = self._action_button(tr("Open Workspace"), "folder", primary=True)
+        open_workspace.setToolTip(tr("Add a folder containing one or more ROS2 packages"))
         open_workspace.clicked.connect(lambda: self.open_workspace_requested.emit())
         actions_layout.addWidget(open_workspace)
 
-        open_package = self._action_button("Open ROS Package", "cube")
-        open_package.setToolTip("Open a folder that contains package.xml")
+        open_package = self._action_button(tr("Open ROS Package"), "cube")
+        open_package.setToolTip(tr("Open a folder that contains package.xml"))
         open_package.clicked.connect(lambda: self.open_package_requested.emit())
         actions_layout.addWidget(open_package)
 
-        new_workspace = self._action_button("New Empty Workspace", "folder-plus")
+        new_workspace = self._action_button(tr("New Empty Workspace"), "folder-plus")
         new_workspace.clicked.connect(lambda: self.new_workspace_requested.emit())
         actions_layout.addWidget(new_workspace)
 
-        continue_button = self._action_button("Continue to IDE", "explorer")
+        continue_button = self._action_button(tr("Continue to IDE"), "explorer")
         continue_button.clicked.connect(lambda: self.continue_requested.emit())
         actions_layout.addWidget(continue_button)
         actions_layout.addStretch(1)
@@ -1311,13 +1312,13 @@ class WelcomePage(QFrame):
         workspace_layout.setContentsMargins(18, 16, 18, 16)
         workspace_layout.setSpacing(8)
         workspace_layout.addWidget(_section("Current Workspace"))
-        self.workspace_name = QLabel("Workspace")
+        self.workspace_name = QLabel(tr("Workspace"))
         self.workspace_name.setObjectName("welcomeWorkspaceName")
         workspace_layout.addWidget(self.workspace_name)
-        self.workspace_meta = QLabel("No folders added")
+        self.workspace_meta = QLabel(tr("No folders added"))
         self.workspace_meta.setObjectName("welcomeMeta")
         workspace_layout.addWidget(self.workspace_meta)
-        self.workspace_root = QLabel("Open a workspace folder to discover ROS2 packages.")
+        self.workspace_root = QLabel(tr("Open a workspace folder to discover ROS2 packages."))
         self.workspace_root.setObjectName("welcomeRoot")
         self.workspace_root.setWordWrap(True)
         workspace_layout.addWidget(self.workspace_root)
@@ -1442,10 +1443,41 @@ class MainWindow(QMainWindow):
         self.launch_logs_ready.connect(self._apply_launch_logs)
         self.setAcceptDrops(True)
 
-        self.setWindowTitle(f"Lappa - ROS2 Package IDE - v{__version__}")
+        self.setWindowTitle(tr("Lappa - ROS2 Package IDE - v{version}", version=__version__))
         self.resize(1460, 860)
         self.setMinimumSize(1180, 720)
         self.setStyleSheet(STYLESHEET)
+        self._init_language()
+
+    # ── Language i18n ────────────────────────────────────────────────
+
+    def _init_language(self) -> None:
+        """Restore language preference from QSettings."""
+        from PySide6.QtCore import QSettings
+        s = QSettings()
+        lang = s.value("ui/language", EN)
+        set_language(lang)
+
+    def _update_lang_button(self) -> None:
+        text = "EN" if get_language() == VI else "VI"
+        self.lang_btn.setText(text)
+
+    def _toggle_language(self) -> None:
+        """Cycle between English and Vietnamese."""
+        from PySide6.QtCore import QSettings
+        new = VI if get_language() == EN else EN
+        set_language(new)
+        s = QSettings()
+        s.setValue("ui/language", new)
+        self._update_lang_button()
+        self._refresh_ui()
+
+    def _refresh_ui(self) -> None:
+        """Re-apply all translatable strings in the UI."""
+        self.setWindowTitle(
+            tr("Lappa - ROS2 Package IDE - v{version}", version=__version__)
+        )
+        self.lang_btn.setToolTip(tr("Switch language"))
 
         central = QWidget()
         central.setObjectName("central")
@@ -1515,7 +1547,7 @@ class MainWindow(QMainWindow):
         self._refresh_welcome_workspace()
         self.page_stack.setCurrentWidget(self.welcome_page)
         self.statusBar().hide()
-        self.setWindowTitle(f"Welcome - Lappa ROS2 Package IDE - v{__version__}")
+        self.setWindowTitle(tr("Welcome - Lappa ROS2 Package IDE - v{version}", version=__version__))
 
     def _enter_workbench(self, *, mark_seen: bool = True) -> None:
         if mark_seen:
@@ -1554,9 +1586,9 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(10, 6, 10, 6)
         layout.setSpacing(8)
 
-        brand = QLabel("Lappa")
+        brand = QLabel(tr("Lappa"))
         brand.setObjectName("brand")
-        subtitle = QLabel("ROS2 Package IDE")
+        subtitle = QLabel(tr("ROS2 Package IDE"))
         subtitle.setObjectName("brandSub")
         brand_box = QVBoxLayout()
         brand_box.setSpacing(0)
@@ -1565,12 +1597,21 @@ class MainWindow(QMainWindow):
         layout.addLayout(brand_box)
 
         layout.addSpacing(12)
-        layout.addWidget(QLabel("Package"))
+        layout.addWidget(QLabel(tr("Package")))
         self.pkg_combo = QComboBox()
         self.pkg_combo.setMinimumWidth(180)
         for pkg in self.packages:
             self.pkg_combo.addItem(self._package_label(pkg), self._package_key(pkg))
         layout.addWidget(self.pkg_combo)
+
+        # ── Language toggle ──
+        self.lang_btn = QPushButton()
+        self.lang_btn.setObjectName("langToggle")
+        self.lang_btn.setFixedSize(28, 28)
+        self.lang_btn.setToolTip(tr("Switch language"))
+        self.lang_btn.clicked.connect(self._toggle_language)
+        self._update_lang_button()
+        layout.addWidget(self.lang_btn)
 
         self.header_file_label = QLabel("No file open")
         self.header_file_label.setObjectName("pathLabel")
@@ -1647,7 +1688,7 @@ class MainWindow(QMainWindow):
 
         title_row = QHBoxLayout()
         title_row.setSpacing(4)
-        title = QLabel("Explorer")
+        title = QLabel(tr("Explorer"))
         title.setObjectName("panelTitleSmall")
         title_row.addWidget(title)
         title_row.addStretch(1)
@@ -1723,9 +1764,9 @@ class MainWindow(QMainWindow):
         header = QHBoxLayout(header_frame)
         header.setContentsMargins(12, 10, 12, 8)
         header.setSpacing(10)
-        title = QLabel("Source Editor")
+        title = QLabel(tr("Source Editor"))
         title.setObjectName("panelTitle")
-        self.ed_path_label = QLabel("No file open")
+        self.ed_path_label = QLabel(tr("No file open"))
         self.ed_path_label.setObjectName("pathLabel")
         header.addWidget(title)
         header.addWidget(self.ed_path_label, 1)
@@ -1788,9 +1829,9 @@ class MainWindow(QMainWindow):
         layout.setSpacing(10)
 
         top = QHBoxLayout()
-        title = QLabel("Live Simulation")
+        title = QLabel(tr("Live Simulation"))
         title.setObjectName("panelTitle")
-        self.sim_state_pill = QLabel("Idle")
+        self.sim_state_pill = QLabel(tr("Idle"))
         self.sim_state_pill.setObjectName("statePill")
         top.addWidget(title)
         top.addStretch(1)
@@ -1811,11 +1852,11 @@ class MainWindow(QMainWindow):
         placeholder_icon.setPixmap(_icon("play", "#93a4b8", "#38bdf8").pixmap(32, 32))
         placeholder_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
         placeholder_layout.addWidget(placeholder_icon)
-        self.sim_placeholder_title = QLabel("Simulation is not running")
+        self.sim_placeholder_title = QLabel(tr("Simulation is not running"))
         self.sim_placeholder_title.setObjectName("simPlaceholderTitle")
         self.sim_placeholder_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         placeholder_layout.addWidget(self.sim_placeholder_title)
-        self.sim_placeholder_package = QLabel("No package selected")
+        self.sim_placeholder_package = QLabel(tr("No package selected"))
         self.sim_placeholder_package.setObjectName("simPlaceholderPackage")
         self.sim_placeholder_package.setAlignment(Qt.AlignmentFlag.AlignCenter)
         placeholder_layout.addWidget(self.sim_placeholder_package)
@@ -1886,7 +1927,7 @@ class MainWindow(QMainWindow):
         self.demo_combo = QComboBox()
         for pkg in self.packages:
             self.demo_combo.addItem(self._package_label(pkg), self._package_key(pkg))
-        control_layout.addWidget(QLabel("Simulation package"))
+        control_layout.addWidget(QLabel(tr("Simulation package")))
         control_layout.addWidget(self.demo_combo)
 
         form = QFormLayout()
@@ -1926,7 +1967,7 @@ class MainWindow(QMainWindow):
         keyboard_row.addStretch(1)
         control_layout.addLayout(keyboard_row)
 
-        self.keyboard_status = QLabel("Native teleop ready")
+        self.keyboard_status = QLabel(tr("Native teleop ready"))
         self.keyboard_status.setObjectName("keyboardStatus")
         mapping_row = QHBoxLayout()
         mapping_row.addWidget(self.keyboard_status, 1)
@@ -1938,7 +1979,7 @@ class MainWindow(QMainWindow):
         mapping_row.addWidget(self.auto_map_toggle)
         control_layout.addLayout(mapping_row)
 
-        self.slam_status_label = QLabel("SLAM Toolbox  waiting for Docker /map")
+        self.slam_status_label = QLabel(tr("SLAM Toolbox  waiting for Docker /map"))
         self.slam_status_label.setObjectName("slamStatus")
         control_layout.addWidget(self.slam_status_label)
         self.slam_progress = QProgressBar()
@@ -2188,7 +2229,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(diagnostic_panel)
 
         guidance_row = QHBoxLayout()
-        self.docker_guidance = QLabel("Checking Docker runtime...")
+        self.docker_guidance = QLabel(tr("Checking Docker runtime..."))
         self.docker_guidance.setObjectName("dockerGuidance")
         self.docker_guidance.setWordWrap(True)
         guidance_row.addWidget(self.docker_guidance, 1)
@@ -2218,7 +2259,7 @@ class MainWindow(QMainWindow):
         launch_log_layout = QVBoxLayout(launch_log_page)
         launch_log_layout.setContentsMargins(4, 4, 4, 4)
         launch_log_header = QHBoxLayout()
-        launch_log_header.addWidget(QLabel("Live Docker / native launch output"))
+        launch_log_header.addWidget(QLabel(tr("Live Docker / native launch output")))
         launch_log_header.addStretch(1)
         clear_launch_log = _button("Clear", compact=True)
         clear_launch_log.clicked.connect(lambda: self.launch_log.clear())
@@ -2388,7 +2429,7 @@ class MainWindow(QMainWindow):
         target = self._editor_display_text().removeprefix("* ")
         box = QMessageBox(self)
         box.setIcon(QMessageBox.Icon.Warning)
-        box.setWindowTitle("Unsaved changes")
+        box.setWindowTitle(tr("Unsaved changes"))
         box.setText(f"Save changes to {target}?")
         save = box.addButton("Save", QMessageBox.ButtonRole.AcceptRole)
         discard = box.addButton("Discard", QMessageBox.ButtonRole.DestructiveRole)

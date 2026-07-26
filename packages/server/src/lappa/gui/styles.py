@@ -526,4 +526,17 @@ QSlider::handle:horizontal {
   border: 2px solid #0f172a;
   border-radius: 8px;
 }
+
+QPushButton#langToggle {
+  background: #1e293b;
+  color: #94a3b8;
+  border: 1px solid #334155;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: bold;
+}
+QPushButton#langToggle:hover {
+  background: #334155;
+  color: #e2e8f0;
+}
 """
