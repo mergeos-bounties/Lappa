@@ -415,6 +415,19 @@ QTextEdit#logBox {
   font-family: "Cascadia Mono", "Consolas", monospace;
 }
 
+QPlainTextEdit#launchLogPanel, QTextEdit#launchLogPanel {
+  background: #080d18;
+  color: #bfd2e8;
+  font-family: "Cascadia Mono", "Consolas", monospace;
+}
+
+QLabel#launchLogPaneTitle {
+  color: #7f91a8;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0 2px;
+}
+
 QTextEdit#aiChat {
   background: #080d18;
   color: #d7e5f5;
