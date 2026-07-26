@@ -23,6 +23,8 @@ from PySide6.QtGui import (
     QPen,
     QPixmap,
     QPolygonF,
+    QTextCharFormat,
+    QTextCursor,
 )
 from PySide6.QtWidgets import (
     QComboBox,
@@ -56,7 +58,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from lappa import __version__, docker_bridge, models3d, packager, ros2_versions, workspace
+from lappa import __version__, ansi, docker_bridge, models3d, packager, ros2_versions, workspace
 from lappa.config import DEMOS_ROOT, ensure_dirs
 from lappa.gui.styles import STYLESHEET
 from lappa.package_loader import RosPackage, load_package, read_file, write_file
@@ -103,6 +105,27 @@ def _button(
     b.setStatusTip(hint)
     b.setAccessibleName(text)
     return b
+
+
+def _append_ansi_line(edit: QTextEdit, prefix: str, text: str) -> None:
+    """Append *prefix* + *text* to *edit*, rendering ANSI SGR color/bold runs.
+
+    Used for the per-source split launch-log panes so colorized ROS2/docker
+    output (e.g. yellow WARN, red ERROR) shows as real color instead of raw
+    escape bytes.
+    """
+    cursor = edit.textCursor()
+    cursor.movePosition(QTextCursor.MoveOperation.End)
+    if prefix:
+        cursor.insertText(prefix, QTextCharFormat())
+    for segment in ansi.parse_ansi_segments(text):
+        fmt = QTextCharFormat()
+        if segment.color:
+            fmt.setForeground(QColor(segment.color))
+        if segment.bold:
+            fmt.setFontWeight(QFont.Weight.Bold)
+        cursor.insertText(segment.text, fmt)
+    cursor.insertText("\n", QTextCharFormat())
 
 
 def _icon(name: str, color: str = "#c9d1d9", accent: str = "#58a6ff") -> QIcon:
@@ -2218,17 +2241,48 @@ class MainWindow(QMainWindow):
         launch_log_layout = QVBoxLayout(launch_log_page)
         launch_log_layout.setContentsMargins(4, 4, 4, 4)
         launch_log_header = QHBoxLayout()
-        launch_log_header.addWidget(QLabel("Live Docker / native launch output"))
+        launch_log_header.addWidget(
+            QLabel("Live Docker / native launch output — split by source, ANSI colors rendered")
+        )
         launch_log_header.addStretch(1)
         clear_launch_log = _button("Clear", compact=True)
-        clear_launch_log.clicked.connect(lambda: self.launch_log.clear())
+        clear_launch_log.clicked.connect(self._clear_launch_logs)
         launch_log_header.addWidget(clear_launch_log)
         launch_log_layout.addLayout(launch_log_header)
+
+        def _pane(title: str, widget: QWidget) -> QWidget:
+            container = QWidget()
+            pane_layout = QVBoxLayout(container)
+            pane_layout.setContentsMargins(0, 0, 0, 0)
+            pane_layout.setSpacing(2)
+            pane_title = QLabel(title)
+            pane_title.setObjectName("launchLogPaneTitle")
+            pane_layout.addWidget(pane_title)
+            pane_layout.addWidget(widget, 1)
+            return container
+
+        launch_log_split = QSplitter(Qt.Orientation.Horizontal)
+        launch_log_split.setObjectName("launchLogSplit")
+
         self.launch_log = QPlainTextEdit()
         self.launch_log.setObjectName("launchLogPanel")
         self.launch_log.setReadOnly(True)
         self.launch_log.setPlaceholderText("Launch logs appear here with secrets redacted.")
-        launch_log_layout.addWidget(self.launch_log)
+        launch_log_split.addWidget(_pane("All streams", self.launch_log))
+
+        self.launch_log_docker = QTextEdit()
+        self.launch_log_docker.setObjectName("launchLogPanel")
+        self.launch_log_docker.setReadOnly(True)
+        self.launch_log_docker.setPlaceholderText("Docker stream — ANSI colors rendered.")
+        launch_log_split.addWidget(_pane("Docker", self.launch_log_docker))
+
+        self.launch_log_native = QTextEdit()
+        self.launch_log_native.setObjectName("launchLogPanel")
+        self.launch_log_native.setReadOnly(True)
+        self.launch_log_native.setPlaceholderText("Native stream — ANSI colors rendered.")
+        launch_log_split.addWidget(_pane("Native", self.launch_log_native))
+
+        launch_log_layout.addWidget(launch_log_split, 1)
         output_tabs.addTab(launch_log_page, "Launch Logs")
         self.docker_output_tabs = output_tabs
         layout.addWidget(output_tabs, 1)
@@ -3842,6 +3896,11 @@ class MainWindow(QMainWindow):
 
         threading.Thread(target=worker, daemon=True).start()
 
+    def _clear_launch_logs(self) -> None:
+        self.launch_log.clear()
+        self.launch_log_docker.clear()
+        self.launch_log_native.clear()
+
     def _apply_launch_logs(self, result: object) -> None:
         self._launch_log_busy = False
         batch = result if isinstance(result, dict) else {"error": str(result)}
@@ -3852,13 +3911,15 @@ class MainWindow(QMainWindow):
         for event in events:
             source = event.get("source") or "launch"
             stream = event.get("stream") or "stdout"
-            self.launch_log.appendPlainText(
-                f"[{source}/{stream}] {event.get('text') or ''}"
-            )
+            text = event.get("text") or ""
+            self.launch_log.appendPlainText(f"[{source}/{stream}] {text}")
+            pane = self.launch_log_docker if source == "docker" else self.launch_log_native
+            _append_ansi_line(pane, f"[{stream}] ", text)
         self._launch_log_cursor = int(batch.get("cursor") or self._launch_log_cursor)
         if events:
-            scrollbar = self.launch_log.verticalScrollBar()
-            scrollbar.setValue(scrollbar.maximum())
+            for widget in (self.launch_log, self.launch_log_docker, self.launch_log_native):
+                scrollbar = widget.verticalScrollBar()
+                scrollbar.setValue(scrollbar.maximum())
 
     def _goto(self, key: str) -> None:
         """Compatibility hook for screenshot automation."""
