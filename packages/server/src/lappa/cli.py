@@ -248,9 +248,23 @@ def path_stats_cmd(
         readable=True,
         help="JSON fixture with a points array.",
     ),
+    json_: bool = typer.Option(
+        False,
+        "--json",
+        help="Emit raw JSON instead of a rich dict.",
+    ),
 ) -> None:
     """Print path length and net displacement for a polyline fixture."""
-    rprint(_path_stats(_path_points_from_fixture(file)))
+    stats = _path_stats(_path_points_from_fixture(file))
+    _render_stats(stats, json_=json_)
+
+
+def _render_stats(stats: dict, json_: bool = False) -> None:
+    """Print stats as JSON or rich dict."""
+    if json_:
+        print(json.dumps(stats, sort_keys=True))
+    else:
+        rprint(stats)
 
 
 @path_app.command("resample")
@@ -272,16 +286,51 @@ def path_resample_cmd(
         min=0.001,
         help="Step size in meters for resampling.",
     ),
+    out: Path = typer.Option(
+        None,
+        "--out",
+        "-o",
+        help="Write the resampled points as a JSON fixture to this file.",
+    ),
+    json_: bool = typer.Option(
+        False,
+        "--json",
+        help="Emit a single machine-readable JSON object (stats + points) to stdout.",
+    ),
 ) -> None:
     """Resample a polyline fixture at fixed step meters and print new length and points."""
     points = _path_points_from_fixture(file)
+    original_stats = _path_stats(points)
     resampled = _resample(points, step_m)
     stats = _path_stats(resampled)
-    stats["step_m"] = step_m
-    rprint(stats)
-    console.print("[dim]Points:[/dim]")
-    for px, py in resampled:
-        console.print(f"  [{px:.4f}, {py:.4f}]")
+
+    payload = {
+        "step_m": step_m,
+        "points": len(resampled),
+        "path_length_m": stats["path_length_m"],
+        "net_displacement_m": stats["net_displacement_m"],
+        "original_points": original_stats["points"],
+        "original_length_m": original_stats["path_length_m"],
+        "resampled_points": [[round(x, 4), round(y, 4)] for x, y in resampled],
+    }
+
+    if json_:
+        print(json.dumps(payload, sort_keys=True))
+    else:
+        stats["step_m"] = step_m
+        rprint(stats)
+        console.print(f"[dim]Original: {original_stats['points']} points, "
+                      f"{original_stats['path_length_m']}m -> {len(resampled)} points, "
+                      f"{stats['path_length_m']}m[/dim]")
+        console.print("[dim]Points:[/dim]")
+        for px, py in resampled:
+            console.print(f"  [{px:.4f}, {py:.4f}]")
+
+    if out is not None:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        fixture = {"name": f"resampled_{file.stem}", "points": payload["resampled_points"],
+                   "step_m": step_m, "source": str(file)}
+        out.write_text(json.dumps(fixture, indent=2) + "\n", encoding="utf-8")
 
 
 @workspace_app.command("open")
