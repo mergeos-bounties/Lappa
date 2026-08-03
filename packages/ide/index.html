@@ -14,6 +14,12 @@
     .panel { border-right:none; border-left:1px solid #1e293b; }
     .muted { color:#94a3b8; font-size:.9rem; }
     code { background:#111827; padding:.1rem .35rem; border-radius:4px; }
+  
+    .foxglove-offline { padding:1rem; }
+    .foxglove-offline h3 { margin:0.5rem 0; font-size:1rem; color:#e2e8f0; }
+    .foxglove-offline .offline-steps { margin:0.75rem 0; padding:0.75rem; background:#111827; border-radius:4px; }
+    .foxglove-offline .offline-steps code { background:#1a2332; }
+    .offline-note { font-size:.85rem; color:#64748b; margin-top:0.5rem; }
   </style>
 </head>
 <body>
@@ -35,5 +41,38 @@
       <p class="muted">Native sim metrics and colcon status appear here.</p>
     </div>
   </main>
+
+    <div class="panel" id="foxglove-panel">
+      <strong>Foxglove Bridge</strong>
+      <div id="foxglove-status" class="muted" style="margin-top:0.5rem;">
+        Checking rosbridge...
+      </div>
+      <div id="foxglove-offline" style="display:none; margin-top:0.75rem; padding:0.75rem; background:#1a2332; border-radius:6px; border:1px solid #2d3748;">
+        <p style="margin:0;">&#x1F6F0; Foxglove Bridge Offline</p>
+        <p class="muted" style="margin:0.5rem 0 0 0;">Start the Docker ROS2 runtime to connect.</p>
+      </div>
+    </div>
+    <script>
+      // Foxglove bridge status poll
+      async function checkFoxglove() {
+        try {
+          const resp = await fetch('/api/foxglove/panel');
+          const data = await resp.json();
+          const el = document.getElementById('foxglove-status');
+          const offline = document.getElementById('foxglove-offline');
+          if (data.status.connected) {
+            el.innerHTML = '<span style="color:#48bb78;">●</span> Connected to rosbridge';
+            offline.style.display = 'none';
+          } else {
+            el.innerHTML = '<span style="color:#f56565;">●</span> ' + data.status.message;
+            offline.style.display = 'block';
+          }
+        } catch(e) {
+          document.getElementById('foxglove-status').innerHTML = '<span style="color:#a0aec0;">○</span> Server checking...';
+        }
+      }
+      checkFoxglove();
+      setInterval(checkFoxglove, 10000);
+    </script>
 </body>
 </html>

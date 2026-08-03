@@ -18,7 +18,7 @@ from lappa.sim.session import SESSION
 
 try:
     from fastapi import FastAPI, HTTPException
-    from fastapi.responses import FileResponse
+    from fastapi.responses import FileResponse, HTMLResponse
     from pydantic import BaseModel
 except ImportError as exc:  # pragma: no cover
     raise ImportError('pip install -e ".[api]"') from exc
@@ -461,3 +461,22 @@ def api_package_mesh(package: str, filename: str):
     return PlainTextResponse(path.read_text(encoding="utf-8"), media_type="text/plain")
 
 
+
+
+# --- Foxglove / rosbridge panel ---
+@app.get(/api/foxglove/panel)
+def api_foxglove_panel() -> dict:
+    """Return Foxglove panel configuration and connection status."""
+    return get_panel_config()
+
+
+@app.get(/api/foxglove/status)
+def api_foxglove_status() -> dict:
+    """Check rosbridge connectivity."""
+    return check_bridge()
+
+
+@app.get(/api/foxglove/offline.html, response_class=HTMLResponse)
+def api_foxglove_offline() -> str:
+    """Return the offline HTML fragment for the Foxglove panel."""
+    return get_offline_html()
