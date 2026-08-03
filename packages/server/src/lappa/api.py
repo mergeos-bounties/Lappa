@@ -461,3 +461,22 @@ def api_package_mesh(package: str, filename: str):
     return PlainTextResponse(path.read_text(encoding="utf-8"), media_type="text/plain")
 
 
+
+
+# --- i18n ---
+@app.get("/api/i18n/locales")
+def api_i18n_locales() -> dict:
+    """List supported locales."""
+    return {
+        "locales": SUPPORTED_LOCALES,
+        "default": DEFAULT_LOCALE,
+    }
+
+
+@app.get("/api/i18n/strings")
+def api_i18n_strings(locale: str = DEFAULT_LOCALE) -> dict:
+    """Return all UI strings for the given locale."""
+    if locale not in SUPPORTED_LOCALES:
+        from fastapi import HTTPException
+        raise HTTPException(400, f"locale {locale} not supported. Choices: {SUPPORTED_LOCALES}")
+    return {"locale": locale, "strings": get_all(locale)}
