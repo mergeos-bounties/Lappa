@@ -14,6 +14,14 @@
     .panel { border-right:none; border-left:1px solid #1e293b; }
     .muted { color:#94a3b8; font-size:.9rem; }
     code { background:#111827; padding:.1rem .35rem; border-radius:4px; }
+  
+    /* ANSI color classes */
+    .ansi-black { color:#1a1a2e; } .ansi-red { color:#ff6b6b; } .ansi-green { color:#51cf66; }
+    .ansi-yellow { color:#ffd43b; } .ansi-blue { color:#339af0; } .ansi-magenta { color:#cc5de8; }
+    .ansi-cyan { color:#22b8cf; } .ansi-white { color:#e2e8f0; }
+    .ansi-bold { font-weight:bold; } .ansi-dim { opacity:0.7; } .ansi-italic { font-style:italic; }
+    .ansi-underline { text-decoration:underline; }
+
   </style>
 </head>
 <body>
@@ -30,10 +38,95 @@
       <strong>Editor</strong>
       <p class="muted">Scaffold UI — connect to Lappa server API for file tree and build.</p>
     </section>
-    <div class="panel">
-      <strong>Sim / build</strong>
-      <p class="muted">Native sim metrics and colcon status appear here.</p>
+    
+    <div class="panel" id="terminal-panel">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+        <strong>Terminal</strong>
+        <div style="display:flex; gap:0.25rem;">
+          <button id="term-tab-native" class="term-tab active" onclick="switchTermTab('native')">Native</button>
+          <button id="term-tab-docker" class="term-tab" onclick="switchTermTab('docker')">Docker</button>
+          <button id="term-tab-all" class="term-tab" onclick="switchTermTab('all')">All</button>
+          <button onclick="clearTerminal()" style="background:#1e293b; border:1px solid #334155; color:#94a3b8; padding:0.15rem 0.5rem; border-radius:4px; cursor:pointer; font-size:0.75rem;">Clear</button>
+        </div>
+      </div>
+      <div id="terminal-output" style="background:#0a0f18; border:1px solid #1e293b; border-radius:6px; padding:0.5rem; height:300px; overflow-y:auto; font-family:'Cascadia Code','Fira Code','Consolas',monospace; font-size:0.8rem; line-height:1.5; white-space:pre-wrap; word-break:break-all;"></div>
     </div>
+    <style>
+      .term-tab { background:#1e293b; border:1px solid #334155; color:#94a3b8; padding:0.15rem 0.5rem; border-radius:4px; cursor:pointer; font-size:0.75rem; }
+      .term-tab.active { background:#3b82f6; color:white; border-color:#3b82f6; }
+      .term-line { padding:0; margin:0; }
+      .term-line.native { border-left:3px solid #3b82f6; padding-left:0.4rem; }
+      .term-line.docker { border-left:3px solid #10b981; padding-left:0.4rem; }
+    
+    /* ANSI color classes */
+    .ansi-black { color:#1a1a2e; } .ansi-red { color:#ff6b6b; } .ansi-green { color:#51cf66; }
+    .ansi-yellow { color:#ffd43b; } .ansi-blue { color:#339af0; } .ansi-magenta { color:#cc5de8; }
+    .ansi-cyan { color:#22b8cf; } .ansi-white { color:#e2e8f0; }
+    .ansi-bold { font-weight:bold; } .ansi-dim { opacity:0.7; } .ansi-italic { font-style:italic; }
+    .ansi-underline { text-decoration:underline; }
+
+  </style>
   </main>
+
+    <script>
+      let termCursor = 0;
+      let termFilter = 'all';
+      let termPolling = null;
+
+      function switchTermTab(source) {
+        termFilter = source;
+        document.querySelectorAll('.term-tab').forEach(t => t.classList.remove('active'));
+        document.getElementById('term-tab-' + source).classList.add('active');
+        termCursor = 0;
+        document.getElementById('terminal-output').innerHTML = '';
+        pollTerminal();
+      }
+
+      function clearTerminal() {
+        document.getElementById('terminal-output').innerHTML = '';
+        termCursor = 0;
+      }
+
+      function ansiToHtml(text) {
+        return text
+          .replace(/\[0m/g, '</span>')
+          .replace(/\[1m/g, '<span class="ansi-bold">')
+          .replace(/\[2m/g, '<span class="ansi-dim">')
+          .replace(/\[3m/g, '<span class="ansi-italic">')
+          .replace(/\[4m/g, '<span class="ansi-underline">')
+          .replace(/\[30m/g, '<span class="ansi-black">')
+          .replace(/\[31m/g, '<span class="ansi-red">')
+          .replace(/\[32m/g, '<span class="ansi-green">')
+          .replace(/\[33m/g, '<span class="ansi-yellow">')
+          .replace(/\[34m/g, '<span class="ansi-blue">')
+          .replace(/\[35m/g, '<span class="ansi-magenta">')
+          .replace(/\[36m/g, '<span class="ansi-cyan">')
+          .replace(/\[37m/g, '<span class="ansi-white">')
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      }
+
+      async function pollTerminal() {
+        try {
+          const resp = await fetch('/api/docker/launch/logs?after=' + termCursor + '&limit=100');
+          const data = await resp.json();
+          if (data.events && data.events.length > 0) {
+            const out = document.getElementById('terminal-output');
+            let autoScroll = out.scrollTop + out.clientHeight >= out.scrollHeight - 20;
+            for (const evt of data.events) {
+              if (termFilter !== 'all' && evt.source !== termFilter) continue;
+              const div = document.createElement('div');
+              div.className = 'term-line ' + evt.source;
+              div.innerHTML = '<span style="color:#64748b;font-size:0.7rem;">[' + evt.source + ']</span> ' + ansiToHtml(evt.text);
+              out.appendChild(div);
+            }
+            if (autoScroll) out.scrollTop = out.scrollHeight;
+            termCursor = data.cursor;
+          }
+        } catch(e) {}
+      }
+
+      pollTerminal();
+      termPolling = setInterval(pollTerminal, 3000);
+    </script>
 </body>
 </html>

@@ -461,3 +461,10 @@ def api_package_mesh(package: str, filename: str):
     return PlainTextResponse(path.read_text(encoding="utf-8"), media_type="text/plain")
 
 
+
+
+# --- Terminal / console ---
+@app.get("/api/terminal/logs")
+def api_terminal_logs(after: int = 0, limit: int = 100, source: str = "all") -> dict:
+    """Return multi-stream terminal logs (native + docker) with ANSI content."""
+    return docker_bridge.launch_logs(after=after, limit=limit)
