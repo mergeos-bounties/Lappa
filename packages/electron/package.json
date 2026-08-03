@@ -1,0 +1,47 @@
+{
+  "name": "lappa-desktop",
+  "version": "0.4.69",
+  "description": "Lappa IDE — Electron desktop shell for ROS2 robotics workspace",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux",
+    "dist:mac": "electron-builder --mac"
+  },
+  "build": {
+    "appId": "com.mergeos.lappa",
+    "productName": "Lappa IDE",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "assets/**",
+      "../ide/**",
+      "../server/src/**"
+    ],
+    "win": {
+      "target": ["nsis"],
+      "icon": "assets/lappa-icon.png"
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "icon": "assets/lappa-icon.png"
+    },
+    "mac": {
+      "target": ["dmg"],
+      "icon": "assets/lappa-icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.0"
+  }
+}
