@@ -248,9 +248,19 @@ def path_stats_cmd(
         readable=True,
         help="JSON fixture with a points array.",
     ),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Output single JSON object to stdout.",
+    ),
 ) -> None:
     """Print path length and net displacement for a polyline fixture."""
-    rprint(_path_stats(_path_points_from_fixture(file)))
+    points = _path_points_from_fixture(file)
+    stats = _path_stats(points)
+    if json_output:
+        print(json.dumps(stats))
+    else:
+        rprint(stats)
 
 
 @path_app.command("resample")
@@ -272,16 +282,51 @@ def path_resample_cmd(
         min=0.001,
         help="Step size in meters for resampling.",
     ),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Output single JSON object to stdout.",
+    ),
+    out: Path | None = typer.Option(
+        None,
+        "--out",
+        "-o",
+        file_okay=True,
+        dir_okay=False,
+        writable=True,
+        help="Write resampled points as a new JSON fixture file.",
+    ),
 ) -> None:
     """Resample a polyline fixture at fixed step meters and print new length and points."""
     points = _path_points_from_fixture(file)
     resampled = _resample(points, step_m)
     stats = _path_stats(resampled)
     stats["step_m"] = step_m
-    rprint(stats)
-    console.print("[dim]Points:[/dim]")
-    for px, py in resampled:
-        console.print(f"  [{px:.4f}, {py:.4f}]")
+    stats["original_points"] = len(points)
+    stats["original_length_m"] = _path_stats(points)["path_length_m"]
+
+    if out is not None:
+        fixture_name = file.stem.replace("sample_path_", "")
+        out_data: dict[str, Any] = {
+            "name": fixture_name,
+            "points": [[round(x, 4), round(y, 4)] for x, y in resampled],
+            "path_length_m": stats["path_length_m"],
+            "step_m": step_m,
+        }
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(out_data, indent=2) + "\n", encoding="utf-8")
+
+    if json_output:
+        if out is not None:
+            stats["out"] = str(out.resolve())
+        print(json.dumps(stats))
+    else:
+        rprint(stats)
+        console.print("[dim]Points:[/dim]")
+        for px, py in resampled:
+            console.print(f"  [{px:.4f}, {py:.4f}]")
+        if out is not None:
+            console.print(f"[green]Wrote {len(resampled)} points to {out}[/green]")
 
 
 @workspace_app.command("open")
