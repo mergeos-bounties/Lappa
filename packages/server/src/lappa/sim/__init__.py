@@ -1,5 +1,13 @@
+from lappa.sim.collision import first_collision, flag_collisions, point_in_circle
 from lappa.sim.engines import ENGINES, create_engine
 from lappa.sim.session import SESSION, SimSession
-from lappa.sim.collision import point_in_circle, flag_collisions, first_collision
 
-__all__ = ["ENGINES", "create_engine", "SESSION", "SimSession", "point_in_circle", "flag_collisions", "first_collision"]
+__all__ = [
+    "ENGINES",
+    "SESSION",
+    "SimSession",
+    "create_engine",
+    "first_collision",
+    "flag_collisions",
+    "point_in_circle",
+]

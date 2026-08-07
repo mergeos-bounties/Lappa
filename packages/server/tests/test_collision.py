@@ -1,7 +1,6 @@
 """Tests for collision radius check helpers."""
 
-
-from lappa.sim.collision import point_in_circle, flag_collisions, first_collision
+from lappa.sim.collision import first_collision, flag_collisions, point_in_circle
 
 
 def test_point_in_circle_inside() -> None:

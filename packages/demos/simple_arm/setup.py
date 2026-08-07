@@ -1,4 +1,5 @@
 ﻿from setuptools import setup
+
 package_name = 'simple_arm'
 setup(
     name=package_name,

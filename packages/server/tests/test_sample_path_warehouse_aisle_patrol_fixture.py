@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 import json
 import math
 from pathlib import Path
@@ -13,7 +14,7 @@ def test_sample_path_warehouse_aisle_patrol() -> None:
     pts = data["points"]
     assert len(pts) >= 4
     length = 0.0
-    for a, b in zip(pts, pts[1:]):
+    for a, b in itertools.pairwise(pts):
         length += math.hypot(b[0] - a[0], b[1] - a[1])
     assert abs(length - float(data["path_length_m"])) < 1e-6
     net = math.hypot(pts[-1][0] - pts[0][0], pts[-1][1] - pts[0][1])

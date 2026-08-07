@@ -10,10 +10,10 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 pytest.importorskip("PySide6")
 
-from PySide6.QtWidgets import QApplication  # noqa: E402
+from PySide6.QtWidgets import QApplication
 
-from lappa import docker_bridge  # noqa: E402
-from lappa.gui.main_window import MainWindow  # noqa: E402
+from lappa import docker_bridge
+from lappa.gui.main_window import MainWindow
 
 
 def _docker_unavailable() -> dict:

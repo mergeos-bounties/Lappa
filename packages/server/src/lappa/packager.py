@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import zipfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -73,14 +73,17 @@ def package_bundle(
         raise ValueError(f"unknown packages: {missing}")
     names = [pkg.name for pkg in selected_packages]
 
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    base = out_name or f"lappa_{distro_id}_{'_'.join(names[:3])}{'_etc' if len(names) > 3 else ''}_{stamp}"
+    stamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+    base = (
+        out_name
+        or f"lappa_{distro_id}_{'_'.join(names[:3])}{'_etc' if len(names) > 3 else ''}_{stamp}"
+    )
     base = base.replace(" ", "_")
     zip_path = _bundle_root() / f"{base}.zip"
 
     manifest = {
         "format": "lappa-ros2-bundle/v1",
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
         "ros2_distro": distro_id,
         "ros2_meta": selected,
         "packages": [],
@@ -122,7 +125,7 @@ def package_bundle(
             "README_BUNDLE.md",
             f"""# Lappa ROS2 bundle ({distro_id})
 
-Packages: {', '.join(names)}
+Packages: {", ".join(names)}
 
 ## Install on Linux with ROS2 {distro_id}
 

@@ -73,9 +73,7 @@ def load_workspace_state(state_path: Path | None = None) -> dict[str, Any]:
     }
 
 
-def save_workspace_state(
-    state: dict[str, Any], state_path: Path | None = None
-) -> dict[str, Any]:
+def save_workspace_state(state: dict[str, Any], state_path: Path | None = None) -> dict[str, Any]:
     path = workspace_file(state_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     data = {

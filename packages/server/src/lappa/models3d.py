@@ -27,9 +27,7 @@ MESH_PRESETS = {
     "wheel": {"description": "Thin cylinder wheel (Y-axis spin)"},
     "chassis": {"description": "Mobile base plate (box)"},
     "tricycle_chassis": {"description": "Y-frame tricycle chassis with equipment deck"},
-    "xe_tham_do_chassis": {
-        "description": "0.40 x 0.26 x 0.15 m chassis from TUPM96/xe_tham_do"
-    },
+    "xe_tham_do_chassis": {"description": "0.40 x 0.26 x 0.15 m chassis from TUPM96/xe_tham_do"},
     "arm_link": {"description": "Elongated link for planar arm"},
     "lidar_dome": {"description": "Hemisphere sensor dome"},
 }
@@ -112,8 +110,20 @@ ROBOT_LAYOUTS: dict[str, dict[str, Any]] = {
     "simple_arm": {
         "chassis": {"preset": "box", "size": [0.12, 0.12, 0.06], "xyz": [0.0, 0.0, 0.03]},
         "links": [
-            {"name": "link1", "preset": "arm_link", "length": 0.55, "thickness": 0.05, "xyz": [0.25, 0.0, 0.08]},
-            {"name": "link2", "preset": "arm_link", "length": 0.45, "thickness": 0.04, "xyz": [0.70, 0.0, 0.08]},
+            {
+                "name": "link1",
+                "preset": "arm_link",
+                "length": 0.55,
+                "thickness": 0.05,
+                "xyz": [0.25, 0.0, 0.08],
+            },
+            {
+                "name": "link2",
+                "preset": "arm_link",
+                "length": 0.45,
+                "thickness": 0.04,
+                "xyz": [0.70, 0.0, 0.08],
+            },
         ],
         "wheels": [],
         "lidar": None,
@@ -734,9 +744,9 @@ def sanitize_urdf(urdf_text: str) -> str:
         flags=re.DOTALL | re.IGNORECASE,
     )
     # collapse multiple empty base_link stubs into one handled by upsert
-    empty_base = list(
-        re.finditer(r'<link\s+name="base_link"\s*/\s*>', text)
-    ) + list(re.finditer(r'<link\s+name="base_link"\s*>\s*</link>', text))
+    empty_base = list(re.finditer(r'<link\s+name="base_link"\s*/\s*>', text)) + list(
+        re.finditer(r'<link\s+name="base_link"\s*>\s*</link>', text)
+    )
     if len(empty_base) > 1:
         for m in empty_base[1:]:
             text = text[: m.start()] + text[m.end() :]
@@ -979,7 +989,11 @@ def build_aligned_robot(package: str, kind: str | None = None) -> dict[str, Any]
         yaw = float(w.get("yaw", 0.0))
         # wheel mesh axis=Y; for steered wheels rotate about Z
         rpy = f"0 0 {yaw:.5f}"
-        xml_parts.append(_link_block(wname, w_uri, xyz="0 0 0", rpy="0 0 0", scale="1 1 1", rgba="0.15 0.15 0.18 1"))
+        xml_parts.append(
+            _link_block(
+                wname, w_uri, xyz="0 0 0", rpy="0 0 0", scale="1 1 1", rgba="0.15 0.15 0.18 1"
+            )
+        )
         xml_parts.append(
             _continuous_joint(
                 f"{wname}_joint",
@@ -1021,7 +1035,9 @@ def build_aligned_robot(package: str, kind: str | None = None) -> dict[str, Any]
         lx, ly, lz = (float(v) for v in link["xyz"])
         xml_parts.append(_link_block(lname, a_uri, rgba="0.64 0.44 0.97 1"))
         xml_parts.append(
-            _fixed_joint(f"{lname}_joint", "base_link", lname, xyz=f"{lx:.5f} {ly:.5f} {lz - cz:.5f}")
+            _fixed_joint(
+                f"{lname}_joint", "base_link", lname, xyz=f"{lx:.5f} {ly:.5f} {lz - cz:.5f}"
+            )
         )
         attachments.append(
             {

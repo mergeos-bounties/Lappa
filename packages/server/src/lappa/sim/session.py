@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 import threading
 import time
 from pathlib import Path
@@ -83,7 +84,7 @@ class SimSession:
         dist = 0.0
         max_seg = 0.0
         idle = 0.0
-        for a, b in zip(rows, rows[1:]):
+        for a, b in itertools.pairwise(rows):
             dx = float(b.get("x", 0) - a.get("x", 0))
             dy = float(b.get("y", 0) - a.get("y", 0))
             seg = (dx * dx + dy * dy) ** 0.5

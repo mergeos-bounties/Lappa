@@ -6,7 +6,6 @@ from typer.testing import CliRunner
 
 from lappa.cli import app
 
-
 FIXTURES = Path(__file__).parent / "fixtures"
 
 

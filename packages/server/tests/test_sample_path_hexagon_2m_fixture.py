@@ -1,6 +1,8 @@
 """Hexagon 2m path fixture smoke."""
+
 from __future__ import annotations
 
+import itertools
 import json
 import math
 from pathlib import Path
@@ -12,7 +14,7 @@ def test_sample_path_hexagon_2m() -> None:
     pts = data["points"]
     assert len(pts) == 7
     length = 0.0
-    for a, b in zip(pts, pts[1:]):
+    for a, b in itertools.pairwise(pts):
         length += math.hypot(b[0] - a[0], b[1] - a[1])
     assert abs(length - 12.0) < 1e-4
     assert abs(length - float(data["path_length_m"])) < 1e-6

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import itertools
 import json
 import math
 import time
@@ -17,6 +18,8 @@ from lappa import (
     models3d,
     packager,
     ros2_versions,
+)
+from lappa import (
     workspace as workspace_store,
 )
 from lappa.config import DEMOS_ROOT, ensure_dirs
@@ -69,7 +72,7 @@ def _path_points_from_fixture(path: Path) -> list[tuple[float, float]]:
 
 
 def _path_stats(points: list[tuple[float, float]]) -> dict[str, float | int]:
-    length = sum(math.hypot(b[0] - a[0], b[1] - a[1]) for a, b in zip(points, points[1:]))
+    length = sum(math.hypot(b[0] - a[0], b[1] - a[1]) for a, b in itertools.pairwise(points))
     net = math.hypot(points[-1][0] - points[0][0], points[-1][1] - points[0][1])
     return {
         "points": len(points),
@@ -78,9 +81,7 @@ def _path_stats(points: list[tuple[float, float]]) -> dict[str, float | int]:
     }
 
 
-def _resample(
-    points: list[tuple[float, float]], step_m: float
-) -> list[tuple[float, float]]:
+def _resample(points: list[tuple[float, float]], step_m: float) -> list[tuple[float, float]]:
     """Resample a polyline at fixed step meters.
 
     Walks along each segment inserting points every *step_m*.
@@ -100,7 +101,7 @@ def _resample(
         if abs(pt[0] - last[0]) > 1e-12 or abs(pt[1] - last[1]) > 1e-12:
             result.append(pt)
 
-    for a, b in zip(points, points[1:]):
+    for a, b in itertools.pairwise(points):
         seg_x = b[0] - a[0]
         seg_y = b[1] - a[1]
         seg_len = math.hypot(seg_x, seg_y)
@@ -319,9 +320,7 @@ def workspace_add(path: Path) -> None:
 
 @workspace_app.command("remove")
 def workspace_remove(path: Path) -> None:
-    state = workspace_store.remove_workspace_root(
-        path if path.is_absolute() else Path.cwd() / path
-    )
+    state = workspace_store.remove_workspace_root(path if path.is_absolute() else Path.cwd() / path)
     rprint({"ok": True, "roots": state["roots"]})
 
 
@@ -564,15 +563,21 @@ def pkg_bundles() -> None:
 @pkg_app.command("template")
 def pkg_template(
     name: str = typer.Argument(..., help="New demo package name (snake_case)"),
-    robot_type: str = typer.Option("diff_drive", "--type", "-t", help="Robot type: diff_drive, ackermann, mecanum"),
+    robot_type: str = typer.Option(
+        "diff_drive", "--type", "-t", help="Robot type: diff_drive, ackermann, mecanum"
+    ),
 ) -> None:
     """Generate a new demo package from template."""
-    from lappa.config import DEMOS_ROOT
     import shutil
+
+    from lappa.config import DEMOS_ROOT
+
     template_name = f"{robot_type}_2w" if robot_type == "diff_drive" else f"{robot_type}_4w"
     src = DEMOS_ROOT / template_name
     if not src.exists():
-        available = [d.name for d in DEMOS_ROOT.iterdir() if d.is_dir() and not d.name.startswith('.')]
+        available = [
+            d.name for d in DEMOS_ROOT.iterdir() if d.is_dir() and not d.name.startswith(".")
+        ]
         rprint(f"[red]Template {template_name} not found.[/red] Available: {available}")
         raise typer.Exit(1)
     dest = DEMOS_ROOT / name
@@ -650,7 +655,9 @@ def model_fit(
 @model_app.command("build-robot")
 def model_build_robot(
     package: str = typer.Argument(..., help="Demo package id"),
-    kind: str | None = typer.Option(None, "--kind", "-k", help="Layout kind (default=package name)"),
+    kind: str | None = typer.Option(
+        None, "--kind", "-k", help="Layout kind (default=package name)"
+    ),
 ) -> None:
     """Build full aligned 3D robot (chassis + wheels + lidar) into package URDF."""
     rprint(models3d.build_aligned_robot(package, kind=kind))

@@ -1,4 +1,5 @@
 """Sample path fixture for sim metrics docs."""
+
 from __future__ import annotations
 
 import json

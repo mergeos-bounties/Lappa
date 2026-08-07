@@ -1,5 +1,6 @@
 import os
 
+
 def test_figure_eight():
     fixture_path = os.path.join(os.path.dirname(__file__), 'fixtures', 'figure_eight.txt')
     assert os.path.exists(fixture_path), "Fixture not found"

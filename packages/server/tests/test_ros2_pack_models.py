@@ -18,7 +18,9 @@ def test_ros2_versions_list_and_set():
 
 
 def test_package_bundle_zip():
-    result = packager.package_bundle(["diff_drive_2w"], distro="humble", out_name="test_bundle_unit")
+    result = packager.package_bundle(
+        ["diff_drive_2w"], distro="humble", out_name="test_bundle_unit"
+    )
     assert result["ok"] is True
     path = Path(result["path"])
     assert path.is_file()
@@ -67,9 +69,7 @@ def test_fit_obj_to_box():
 
 
 def test_tricycle_uses_xe_tham_do_chassis_dimensions():
-    text, meta = models3d.generate_mesh(
-        "xe_tham_do_chassis", sx=0.40, sy=0.26, sz=0.15
-    )
+    text, meta = models3d.generate_mesh("xe_tham_do_chassis", sx=0.40, sy=0.26, sz=0.15)
     bounds = models3d.mesh_bounds(text)
     assert meta["kind"] == "xe_tham_do_chassis"
     assert meta["source"].endswith("TUPM96/xe_tham_do")

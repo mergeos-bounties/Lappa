@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-
-from lappa.cli import _resample, _path_stats
+from lappa.cli import _path_stats, _resample
 
 
 def test_resample_identity_short() -> None:
@@ -43,8 +42,15 @@ def test_resample_multi_segment() -> None:
 def test_resample_s_curve() -> None:
     """S-curve fixture with 0.5m step."""
     pts = [
-        (0.0, 1.0), (1.0, 1.2), (2.0, 1.8), (3.0, 2.2),
-        (4.0, 2.0), (5.0, 1.5), (6.0, 1.0), (7.0, 0.8), (8.0, 1.0),
+        (0.0, 1.0),
+        (1.0, 1.2),
+        (2.0, 1.8),
+        (3.0, 2.2),
+        (4.0, 2.0),
+        (5.0, 1.5),
+        (6.0, 1.0),
+        (7.0, 0.8),
+        (8.0, 1.0),
     ]
     result = _resample(pts, 0.5)
     assert len(result) > len(pts)
@@ -60,11 +66,13 @@ def test_resample_empty_or_single() -> None:
 
 def test_resample_negative_step() -> None:
     import pytest
+
     with pytest.raises(ValueError, match="positive"):
         _resample([(0.0, 0.0), (1.0, 0.0)], -0.1)
 
 
 def test_resample_zero_step() -> None:
     import pytest
+
     with pytest.raises(ValueError, match="positive"):
         _resample([(0.0, 0.0), (1.0, 0.0)], 0.0)

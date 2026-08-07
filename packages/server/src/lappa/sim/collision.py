@@ -5,9 +5,7 @@ from __future__ import annotations
 CircleObstacle = tuple[float, float, float]  # (center_x, center_y, radius)
 
 
-def point_in_circle(
-    px: float, py: float, cx: float, cy: float, radius: float
-) -> bool:
+def point_in_circle(px: float, py: float, cx: float, cy: float, radius: float) -> bool:
     """Return True if point (px, py) is inside the circle (cx, cy, radius)."""
     dx = px - cx
     dy = py - cy
@@ -32,9 +30,7 @@ def flag_collisions(
     """
     result: list[bool] = []
     for px, py in path:
-        collides = any(
-            point_in_circle(px, py, cx, cy, r) for cx, cy, r in obstacles
-        )
+        collides = any(point_in_circle(px, py, cx, cy, r) for cx, cy, r in obstacles)
         result.append(collides)
     return result
 

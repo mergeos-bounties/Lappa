@@ -5,15 +5,14 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-
 DEMO_ROOT = Path(__file__).resolve().parents[2] / "demos" / "tricycle_3w"
 sys.path.insert(0, str(DEMO_ROOT))
 
-from tricycle_3w.teleop import (  # noqa: E402
-    OccupancyWorld,
+from tricycle_3w.slam_bridge import _display_map_cells
+from tricycle_3w.teleop import (
     WAREHOUSE_WAYPOINTS,
+    OccupancyWorld,
 )
-from tricycle_3w.slam_bridge import _display_map_cells  # noqa: E402
 
 
 def test_clearpath_warehouse_world_loads_with_ros_metadata():

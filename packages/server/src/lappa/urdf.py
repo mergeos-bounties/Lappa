@@ -68,17 +68,21 @@ def parse_urdf(urdf_text: str) -> dict[str, Any]:
         if not name:
             continue
         origin_el = link_el.find("./visual/origin")
-        xyz = _parse_triplet(origin_el.attrib.get("xyz") if origin_el is not None else None,
-                             (0.0, 0.0, 0.0))
-        rpy = _parse_triplet(origin_el.attrib.get("rpy") if origin_el is not None else None,
-                             (0.0, 0.0, 0.0))
-        links.append({
-            "name": name,
-            "role": _classify_link(name),
-            "has_visual": link_el.find("visual") is not None,
-            "visual_xyz": xyz,
-            "visual_rpy": rpy,
-        })
+        xyz = _parse_triplet(
+            origin_el.attrib.get("xyz") if origin_el is not None else None, (0.0, 0.0, 0.0)
+        )
+        rpy = _parse_triplet(
+            origin_el.attrib.get("rpy") if origin_el is not None else None, (0.0, 0.0, 0.0)
+        )
+        links.append(
+            {
+                "name": name,
+                "role": _classify_link(name),
+                "has_visual": link_el.find("visual") is not None,
+                "visual_xyz": xyz,
+                "visual_rpy": rpy,
+            }
+        )
 
     joints: list[dict[str, Any]] = []
     for joint_el in root.findall("joint"):
@@ -91,18 +95,22 @@ def parse_urdf(urdf_text: str) -> dict[str, Any]:
         if not parent or not child:
             continue
         origin_el = joint_el.find("origin")
-        xyz = _parse_triplet(origin_el.attrib.get("xyz") if origin_el is not None else None,
-                             (0.0, 0.0, 0.0))
-        rpy = _parse_triplet(origin_el.attrib.get("rpy") if origin_el is not None else None,
-                             (0.0, 0.0, 0.0))
-        joints.append({
-            "name": name,
-            "type": jtype,
-            "parent": parent,
-            "child": child,
-            "xyz": xyz,
-            "rpy": rpy,
-        })
+        xyz = _parse_triplet(
+            origin_el.attrib.get("xyz") if origin_el is not None else None, (0.0, 0.0, 0.0)
+        )
+        rpy = _parse_triplet(
+            origin_el.attrib.get("rpy") if origin_el is not None else None, (0.0, 0.0, 0.0)
+        )
+        joints.append(
+            {
+                "name": name,
+                "type": jtype,
+                "parent": parent,
+                "child": child,
+                "xyz": xyz,
+                "rpy": rpy,
+            }
+        )
 
     return {"robot": robot_name, "links": links, "joints": joints}
 
@@ -176,16 +184,18 @@ def stick_figure(urdf_text: str) -> dict[str, Any]:
         if parent not in poses or child not in poses:
             continue
         p, c = poses[parent], poses[child]
-        segments.append({
-            "joint": joint["name"],
-            "type": joint["type"],
-            "parent": parent,
-            "child": child,
-            "x1": round(p[0], 5),
-            "y1": round(p[1], 5),
-            "x2": round(c[0], 5),
-            "y2": round(c[1], 5),
-        })
+        segments.append(
+            {
+                "joint": joint["name"],
+                "type": joint["type"],
+                "parent": parent,
+                "child": child,
+                "x1": round(p[0], 5),
+                "y1": round(p[1], 5),
+                "x2": round(c[0], 5),
+                "y2": round(c[1], 5),
+            }
+        )
 
     return {
         "robot": parsed["robot"],

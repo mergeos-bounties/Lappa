@@ -16,10 +16,10 @@ QApplication = QtWidgets.QApplication
 QPushButton = QtWidgets.QPushButton
 QToolButton = QtWidgets.QToolButton
 
-from lappa.config import DEMOS_ROOT  # noqa: E402
-from lappa.gui.main_window import MainWindow, SimCanvas  # noqa: E402
-from lappa.package_loader import load_package  # noqa: E402
-from lappa.sim.session import SESSION  # noqa: E402
+from lappa.config import DEMOS_ROOT
+from lappa.gui.main_window import MainWindow, SimCanvas
+from lappa.package_loader import load_package
+from lappa.sim.session import SESSION
 
 
 def _docker_unavailable() -> dict:
@@ -34,9 +34,7 @@ def _docker_unavailable() -> dict:
     }
 
 
-def test_workbench_buttons_expose_tooltips_and_accessible_names(
-    tmp_path, monkeypatch
-):
+def test_workbench_buttons_expose_tooltips_and_accessible_names(tmp_path, monkeypatch):
     app = QApplication.instance() or QApplication([])
     monkeypatch.setattr("lappa.gui.main_window.docker_bridge.status", _docker_unavailable)
     settings = QSettings(str(tmp_path / "tooltips.ini"), QSettings.Format.IniFormat)
@@ -165,11 +163,7 @@ def test_switching_package_closes_simulation_view(tmp_path, monkeypatch):
     window._show_simulation()
 
     current = window.demo_combo.currentIndex()
-    target = next(
-        index
-        for index in range(window.demo_combo.count())
-        if index != current
-    )
+    target = next(index for index in range(window.demo_combo.count()) if index != current)
     window.demo_combo.setCurrentIndex(target)
 
     assert window._simulation_open is False

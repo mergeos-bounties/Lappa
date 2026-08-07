@@ -1,4 +1,5 @@
 ﻿from setuptools import setup
+
 package_name = 'omni_3w'
 setup(
     name=package_name,

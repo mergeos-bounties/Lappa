@@ -1,0 +1,13 @@
+# ROS2 Launch Bridge for Lappa IDE (Bounty #5)
+FROM ros:humble-ros-base
+
+RUN apt-get update && apt-get install -y     python3-pip     ros-humble-rosbridge-suite     && rm -rf /var/lib/apt/lists/*
+
+COPY scripts/ros2_bridge.py /app/ros2_bridge.py
+COPY scripts/docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
+
+WORKDIR /app
+EXPOSE 9090
+
+ENTRYPOINT ["/app/docker-entrypoint.sh"]

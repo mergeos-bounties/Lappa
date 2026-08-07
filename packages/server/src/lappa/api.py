@@ -10,6 +10,8 @@ from lappa import (
     packager,
     ros2_versions,
     urdf,
+)
+from lappa import (
     workspace as workspace_store,
 )
 from lappa.config import DEMOS_ROOT, ensure_dirs
@@ -459,5 +461,3 @@ def api_package_mesh(package: str, filename: str):
     except FileNotFoundError as e:
         raise HTTPException(404, str(e)) from e
     return PlainTextResponse(path.read_text(encoding="utf-8"), media_type="text/plain")
-
-

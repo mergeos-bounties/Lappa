@@ -61,7 +61,9 @@ def test_workspace_state_add_open_and_resolve(tmp_path):
 
     assert [p.name for p in packages] == ["nav_stack"]
     assert workspace.active_package(state_path).name == "nav_stack"
-    assert workspace.resolve_package_ref("nav_stack", state_path=state_path).path == pkg_path.resolve()
+    assert (
+        workspace.resolve_package_ref("nav_stack", state_path=state_path).path == pkg_path.resolve()
+    )
     assert workspace.resolve_package_ref(pkg_path, state_path=state_path).name == "nav_stack"
 
 

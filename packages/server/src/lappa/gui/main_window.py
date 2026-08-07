@@ -25,9 +25,9 @@ from PySide6.QtGui import (
     QPolygonF,
 )
 from PySide6.QtWidgets import (
-    QComboBox,
-    QCheckBox,
     QApplication,
+    QCheckBox,
+    QComboBox,
     QFileDialog,
     QFormLayout,
     QFrame,
@@ -41,8 +41,8 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QPlainTextEdit,
-    QPushButton,
     QProgressBar,
+    QPushButton,
     QSlider,
     QSplitter,
     QStackedWidget,
@@ -62,7 +62,6 @@ from lappa.gui.styles import STYLESHEET
 from lappa.package_loader import RosPackage, load_package, read_file, write_file
 from lappa.sim.engines import DEFAULT_OBSTACLES
 from lappa.sim.session import SESSION
-
 
 WELCOME_SETTINGS_KEY = "onboarding/welcome_seen"
 DRIVE_KEY_VALUES = {
@@ -428,7 +427,7 @@ class SimCanvas(QWidget):
         self.fixed_frame = frame if frame in {"map", "odom", "base_link"} else "map"
         self.update()
 
-    def mousePressEvent(self, event) -> None:  # noqa: N802
+    def mousePressEvent(self, event) -> None:
         self.setFocus(Qt.FocusReason.MouseFocusReason)
         if event.button() == Qt.MouseButton.LeftButton and self.view_mode != "Top":
             self._drag_position = event.position()
@@ -437,7 +436,7 @@ class SimCanvas(QWidget):
             return
         super().mousePressEvent(event)
 
-    def keyPressEvent(self, event) -> None:  # noqa: N802
+    def keyPressEvent(self, event) -> None:
         key = int(event.key())
         if key in DRIVE_KEY_VALUES:
             if not event.isAutoRepeat():
@@ -446,7 +445,7 @@ class SimCanvas(QWidget):
             return
         super().keyPressEvent(event)
 
-    def keyReleaseEvent(self, event) -> None:  # noqa: N802
+    def keyReleaseEvent(self, event) -> None:
         key = int(event.key())
         if key in DRIVE_KEY_VALUES:
             if not event.isAutoRepeat():
@@ -455,7 +454,7 @@ class SimCanvas(QWidget):
             return
         super().keyReleaseEvent(event)
 
-    def mouseMoveEvent(self, event) -> None:  # noqa: N802
+    def mouseMoveEvent(self, event) -> None:
         if self._drag_position is not None:
             delta = event.position() - self._drag_position
             self.camera_yaw += delta.x() * 0.008
@@ -465,7 +464,7 @@ class SimCanvas(QWidget):
             return
         super().mouseMoveEvent(event)
 
-    def mouseReleaseEvent(self, event) -> None:  # noqa: N802
+    def mouseReleaseEvent(self, event) -> None:
         if event.button() == Qt.MouseButton.LeftButton and self._drag_position is not None:
             self._drag_position = None
             self.unsetCursor()
@@ -473,7 +472,7 @@ class SimCanvas(QWidget):
             return
         super().mouseReleaseEvent(event)
 
-    def wheelEvent(self, event) -> None:  # noqa: N802
+    def wheelEvent(self, event) -> None:
         factor = 1.1 if event.angleDelta().y() > 0 else 1 / 1.1
         self.zoom = min(8.0, max(0.55, self.zoom * factor))
         self.update()
@@ -672,9 +671,7 @@ class SimCanvas(QWidget):
         def side_depth(side: float) -> float:
             world_x = cx + lateral[0] * side * width / 2
             world_y = cy + lateral[1] * side * width / 2
-            return world_x * math.sin(self.camera_yaw) + world_y * math.cos(
-                self.camera_yaw
-            )
+            return world_x * math.sin(self.camera_yaw) + world_y * math.cos(self.camera_yaw)
 
         near_side = 1.0 if side_depth(1.0) >= side_depth(-1.0) else -1.0
         far_side = -near_side
@@ -914,9 +911,7 @@ class SimCanvas(QWidget):
         painter.setPen(QColor("#4ade80"))
         status = "BLOCKED" if bool(self.state.get("collision")) else "OK"
         source = "SLAM" if self.map_source == "slam_toolbox" else "PREVIEW"
-        known_cells = int(
-            self.map_metadata.get("known_cells") or len(self.mapped_cells)
-        )
+        known_cells = int(self.map_metadata.get("known_cells") or len(self.mapped_cells))
         painter.drawText(
             20,
             50,
@@ -943,23 +938,21 @@ class SimCanvas(QWidget):
             painter.drawLine(origin, origin + QPointF(0, -24))
             painter.drawText(origin + QPointF(4, -25), "Z")
 
-    def paintEvent(self, event) -> None:  # noqa: N802
+    def paintEvent(self, event) -> None:
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.fillRect(self.rect(), QColor("#07101c"))
-        painter.fillRect(0, int(self.height() * 0.43), self.width(), self.height(), QColor("#0a1624"))
+        painter.fillRect(
+            0, int(self.height() * 0.43), self.width(), self.height(), QColor("#0a1624")
+        )
 
         if self.show_grid:
             for grid_value in range(-6, 7):
                 major = grid_value == 0
                 color = QColor("#31455d") if major else QColor("#17283a")
                 painter.setPen(QPen(color, 2 if major else 1))
-                painter.drawLine(
-                    self._project(grid_value, -6), self._project(grid_value, 6)
-                )
-                painter.drawLine(
-                    self._project(-6, grid_value), self._project(6, grid_value)
-                )
+                painter.drawLine(self._project(grid_value, -6), self._project(grid_value, 6))
+                painter.drawLine(self._project(-6, grid_value), self._project(6, grid_value))
 
         if self.show_tf:
             axis_origin = self._project(0, 0, 0.02)
@@ -1022,9 +1015,7 @@ class SimCanvas(QWidget):
             obstacles = self.state.get("obstacles") or DEFAULT_OBSTACLES
             for obstacle in sorted(obstacles, key=lambda item: item[0] + item[1]):
                 ox, oy, half_w, half_h = [float(value) for value in obstacle]
-                self._draw_world_box(
-                    painter, ox, oy, half_w, half_h, 0.42, QColor("#354960")
-                )
+                self._draw_world_box(painter, ox, oy, half_w, half_h, 0.42, QColor("#354960"))
 
         x = float(self.state.get("x") or 0.0)
         y = float(self.state.get("y") or 0.0)
@@ -1171,7 +1162,7 @@ class ModelPreview(QWidget):
             f"{len(triangles)} triangle sets"
         )
 
-    def paintEvent(self, event) -> None:  # noqa: N802
+    def paintEvent(self, event) -> None:
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         w, h = self.width(), self.height()
@@ -1189,7 +1180,9 @@ class ModelPreview(QWidget):
 
         if not self.vertices:
             painter.setPen(QColor("#5f7390"))
-            painter.drawText(12, 48, "3D preview appears here for OBJ/STL. URDF shows structure summary.")
+            painter.drawText(
+                12, 48, "3D preview appears here for OBJ/STL. URDF shows structure summary."
+            )
             return
 
         xs = [v[0] for v in self.vertices]
@@ -1349,9 +1342,7 @@ class WelcomePage(QFrame):
         root_count = len(roots)
         package_word = "package" if package_count == 1 else "packages"
         root_word = "folder" if root_count == 1 else "folders"
-        self.workspace_meta.setText(
-            f"{package_count} {package_word} in {root_count} {root_word}"
-        )
+        self.workspace_meta.setText(f"{package_count} {package_word} in {root_count} {root_word}")
         if roots:
             extra = f"\n+ {root_count - 1} more" if root_count > 1 else ""
             root_path = Path(roots[0])
@@ -1543,7 +1534,9 @@ class MainWindow(QMainWindow):
 
     def _welcome_select_package(self, package_path: str) -> None:
         self._editor_load_package(package_path)
-        if self._editor_pkg and self._package_key(self._editor_pkg) == str(Path(package_path).resolve()):
+        if self._editor_pkg and self._package_key(self._editor_pkg) == str(
+            Path(package_path).resolve()
+        ):
             self._enter_workbench()
 
     def _build_topbar(self) -> QFrame:
@@ -2325,7 +2318,7 @@ class MainWindow(QMainWindow):
         state = "enabled" if enabled else "disabled"
         self._status(f"Hot reload {state}")
 
-    def resizeEvent(self, event) -> None:  # noqa: N802
+    def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
         if hasattr(self, "_resize_timer"):
             self._resize_active = True
@@ -2583,7 +2576,7 @@ class MainWindow(QMainWindow):
         self._status("New workspace created")
         return True
 
-    def dragEnterEvent(self, event) -> None:  # noqa: N802
+    def dragEnterEvent(self, event) -> None:
         if event.mimeData().hasUrls():
             for url in event.mimeData().urls():
                 if url.isLocalFile() and Path(url.toLocalFile()).is_dir():
@@ -2591,7 +2584,7 @@ class MainWindow(QMainWindow):
                     return
         event.ignore()
 
-    def dropEvent(self, event) -> None:  # noqa: N802
+    def dropEvent(self, event) -> None:
         added = 0
         for url in event.mimeData().urls():
             if not url.isLocalFile():
@@ -2849,7 +2842,7 @@ class MainWindow(QMainWindow):
         self._set_editor_dirty(False)
         self._status(f"Saved {self._editor_pkg.name}/{self._editor_rel}")
 
-    def closeEvent(self, event) -> None:  # noqa: N802
+    def closeEvent(self, event) -> None:
         if self._confirm_editor_transition():
             self.sim_zero()
             super().closeEvent(event)
@@ -2861,9 +2854,7 @@ class MainWindow(QMainWindow):
 
     def _set_simulation_open(self, opened: bool) -> None:
         self._simulation_open = opened
-        self.sim_stack.setCurrentWidget(
-            self.sim_content_page if opened else self.sim_placeholder
-        )
+        self.sim_stack.setCurrentWidget(self.sim_content_page if opened else self.sim_placeholder)
         if not opened:
             self.sim_state_pill.setText("Idle")
 
@@ -2981,9 +2972,7 @@ class MainWindow(QMainWindow):
         package_key = self._package_key(pkg) if pkg else None
         previous_key = self._simulation_selected_key
         self._simulation_selected_key = package_key
-        self.sim_placeholder_package.setText(
-            pkg.name if pkg else "No package selected"
-        )
+        self.sim_placeholder_package.setText(pkg.name if pkg else "No package selected")
         self.show_simulation_button.setEnabled(pkg is not None)
 
         if previous_key and previous_key != package_key:
@@ -3020,13 +3009,9 @@ class MainWindow(QMainWindow):
             else "Auto mapping is available for tricycle_3w"
         )
         if can_map:
-            self.slam_status_label.setText(
-                "SLAM Toolbox  starts with Show Simulation"
-            )
+            self.slam_status_label.setText("SLAM Toolbox  starts with Show Simulation")
         else:
-            self.slam_status_label.setText(
-                "ROS2 telemetry  starts with Show Simulation"
-            )
+            self.slam_status_label.setText("ROS2 telemetry  starts with Show Simulation")
             self.slam_progress.setValue(0)
 
     def _set_auto_map_enabled(self, enabled: bool) -> None:
@@ -3052,14 +3037,10 @@ class MainWindow(QMainWindow):
                 session.get("running") and session.get("demo") == "tricycle_3w"
             )
             if real_slam_running:
-                self.slam_status_label.setText(
-                    "SLAM Toolbox  waiting for first /map snapshot"
-                )
+                self.slam_status_label.setText("SLAM Toolbox  waiting for first /map snapshot")
                 self._queue_docker_auto_map(True)
             elif self._docker_status_cache.get("daemon"):
-                self.slam_status_label.setText(
-                    "SLAM Toolbox  building ROS2 package in Docker"
-                )
+                self.slam_status_label.setText("SLAM Toolbox  building ROS2 package in Docker")
                 self._docker_launch_active()
             else:
                 self.slam_status_label.setText(
@@ -3105,9 +3086,7 @@ class MainWindow(QMainWindow):
         self.sl_ly.setValue(0)
         self.sl_az.setValue(round(steering * 100))
         self._update_drive_keycaps()
-        self.keyboard_status.setText(
-            f"Native  speed {linear_x:+.2f}  steer {steering:+.2f}"
-        )
+        self.keyboard_status.setText(f"Native  speed {linear_x:+.2f}  steer {steering:+.2f}")
         self._queue_docker_twist(linear_x, 0.0, steering)
 
     def _update_drive_keycaps(self) -> None:
@@ -3173,9 +3152,7 @@ class MainWindow(QMainWindow):
         if result.get("control") == "auto_explore" and result.get("ok"):
             if result.get("enabled"):
                 self.keyboard_status.setText("Auto map  Native + ROS2 SLAM")
-                self.slam_status_label.setText(
-                    "SLAM Toolbox  /scan active; waiting for /map"
-                )
+                self.slam_status_label.setText("SLAM Toolbox  /scan active; waiting for /map")
             else:
                 self.keyboard_status.setText("Auto mapping stopped")
         elif result.get("ok"):
@@ -3192,10 +3169,7 @@ class MainWindow(QMainWindow):
 
     def _apply_latest_slam_snapshot(self) -> bool:
         session = self._docker_status_cache.get("session") or {}
-        if not (
-            session.get("running")
-            and session.get("demo") == "tricycle_3w"
-        ):
+        if not (session.get("running") and session.get("demo") == "tricycle_3w"):
             self._slam_snapshot_cache = None
             return False
         now = time.monotonic()
@@ -3218,9 +3192,7 @@ class MainWindow(QMainWindow):
             return False
         age = time.time() - float(snapshot.get("updated_at") or 0.0)
         if age < -2.0 or age > 3.0:
-            self.slam_status_label.setText(
-                "SLAM Toolbox  waiting for a fresh /map snapshot"
-            )
+            self.slam_status_label.setText("SLAM Toolbox  waiting for a fresh /map snapshot")
             return False
 
         if self._slam_snapshot_applied_mtime_ns != self._slam_snapshot_mtime_ns:
@@ -3232,9 +3204,7 @@ class MainWindow(QMainWindow):
             resolution = float(map_data.get("resolution") or 0.0)
             known = int(map_data.get("known_cells") or 0)
             coverage = float(map_data.get("coverage_percent") or 0.0)
-            self.slam_progress.setValue(
-                round(max(0.0, min(100.0, coverage)) * 10)
-            )
+            self.slam_progress.setValue(round(max(0.0, min(100.0, coverage)) * 10))
             self.slam_status_label.setText(
                 "SLAM Toolbox  LIVE  "
                 f"/map {width}x{height} @ {resolution:.2f} m  "
@@ -3245,13 +3215,9 @@ class MainWindow(QMainWindow):
                 1,
                 f"/map  {width}x{height} @ {resolution:.2f} m",
             )
-            self.keyboard_status.setText(
-                "ROS2  /scan -> SLAM Toolbox -> /map"
-            )
+            self.keyboard_status.setText("ROS2  /scan -> SLAM Toolbox -> /map")
             self.sim_state_pill.setText("SLAM Live")
-            self.statusBar().showMessage(
-                f"SLAM live: /map {width}x{height} from tricycle_3w"
-            )
+            self.statusBar().showMessage(f"SLAM live: /map {width}x{height} from tricycle_3w")
 
             pose = snapshot.get("pose") or {}
             twist = snapshot.get("twist") or {}
@@ -3269,11 +3235,7 @@ class MainWindow(QMainWindow):
         return True
 
     def _simulation_snapshot_path(self, package: RosPackage) -> Path:
-        filename = (
-            "slam_snapshot.json"
-            if package.name == "tricycle_3w"
-            else "sim_snapshot.json"
-        )
+        filename = "slam_snapshot.json" if package.name == "tricycle_3w" else "sim_snapshot.json"
         return package.path / ".lappa_runtime" / filename
 
     def _apply_latest_ros_snapshot(self) -> bool:
@@ -3281,10 +3243,7 @@ class MainWindow(QMainWindow):
         if package is None:
             return False
         session = self._docker_status_cache.get("session") or {}
-        if not (
-            session.get("running")
-            and session.get("demo") == package.name
-        ):
+        if not (session.get("running") and session.get("demo") == package.name):
             return False
         if package.name == "tricycle_3w":
             return self._apply_latest_slam_snapshot()
@@ -3337,11 +3296,7 @@ class MainWindow(QMainWindow):
         self.scan_label.setText(f"{len(lidar)} rays" if lidar else "-")
         self.map_cells_label.setText("-")
         self.display_items["map"].setText(1, "not published")
-        topics = (
-            "/joint_states_array + /tip"
-            if package.name == "simple_arm"
-            else "/odom + /scan"
-        )
+        topics = "/joint_states_array + /tip" if package.name == "simple_arm" else "/odom + /scan"
         self.slam_status_label.setText(f"ROS2  LIVE  {topics}")
         self.keyboard_status.setText("ROS2 telemetry connected")
         self.sim_state_pill.setText("ROS2 Live")
@@ -3366,9 +3321,7 @@ class MainWindow(QMainWindow):
             self._queue_docker_twist(lx, ly, az)
         SESSION.cmd(lx, ly, az)
         state = SESSION.tick()
-        using_ros = bool(
-            self._simulation_open and self._apply_latest_ros_snapshot()
-        )
+        using_ros = bool(self._simulation_open and self._apply_latest_ros_snapshot())
         if not using_ros:
             self.canvas.set_state(state)
             self.pose_label.setText(
@@ -3402,10 +3355,7 @@ class MainWindow(QMainWindow):
             corridor_clearance = []
             for index, distance in enumerate(lidar):
                 angle = (index / ray_count * math.tau + math.pi) % math.tau - math.pi
-                if (
-                    abs(angle) <= math.pi / 3
-                    and abs(distance * math.sin(angle)) <= 0.36
-                ):
+                if abs(angle) <= math.pi / 3 and abs(distance * math.sin(angle)) <= 0.36:
                     corridor_clearance.append(distance * math.cos(angle))
             front = min(corridor_clearance, default=min(lidar))
             left = sum(sector(ray_count // 8, ray_count // 36))
@@ -3443,19 +3393,12 @@ class MainWindow(QMainWindow):
 
         target_x, target_y = AUTO_MAP_WAYPOINTS[self._auto_map_waypoint]
         dx, dy = target_x - x, target_y - y
-        if (
-            math.hypot(dx, dy) < 0.35
-            or sim_time - self._auto_map_waypoint_started_t > 12.0
-        ):
-            self._auto_map_waypoint = (
-                self._auto_map_waypoint + 1
-            ) % len(AUTO_MAP_WAYPOINTS)
+        if math.hypot(dx, dy) < 0.35 or sim_time - self._auto_map_waypoint_started_t > 12.0:
+            self._auto_map_waypoint = (self._auto_map_waypoint + 1) % len(AUTO_MAP_WAYPOINTS)
             self._auto_map_waypoint_started_t = sim_time
             target_x, target_y = AUTO_MAP_WAYPOINTS[self._auto_map_waypoint]
             dx, dy = target_x - x, target_y - y
-        heading_error = (math.atan2(dy, dx) - theta + math.pi) % (
-            2 * math.pi
-        ) - math.pi
+        heading_error = (math.atan2(dy, dx) - theta + math.pi) % (2 * math.pi) - math.pi
         steering = max(-0.75, min(0.75, heading_error * 1.25))
         speed = 0.34 if abs(heading_error) < 0.85 else 0.15
         return self._safe_native_auto_command(speed, steering)
@@ -3536,9 +3479,7 @@ class MainWindow(QMainWindow):
         try:
             target = str(pkg.path) if pkg else demo
             result = models3d.build_aligned_robot(target, kind=demo)
-            self._status(
-                f"Built 3D robot for {result['package']}: {result['links']} links"
-            )
+            self._status(f"Built 3D robot for {result['package']}: {result['links']} links")
             if pkg:
                 self._editor_load_package(pkg)
         except Exception as exc:  # noqa: BLE001
@@ -3665,10 +3606,7 @@ class MainWindow(QMainWindow):
         selected_key = self._package_key(selected_pkg) if selected_pkg else None
         stale_simulation_result = bool(
             operation_package_key
-            and (
-                operation_package_key != selected_key
-                or not self._simulation_open
-            )
+            and (operation_package_key != selected_key or not self._simulation_open)
         )
         if stale_simulation_result:
             if ok:
@@ -3716,9 +3654,7 @@ class MainWindow(QMainWindow):
             and compose
             and (not running or bool(status.get("ready_for_launch")))
         )
-        self.docker_stop_button.setEnabled(
-            not busy and session.get("mode") == "docker_launch"
-        )
+        self.docker_stop_button.setEnabled(not busy and session.get("mode") == "docker_launch")
         self.docker_down_button.setEnabled(not busy and running)
 
     def _apply_docker_status(self, status: dict) -> None:
@@ -3852,9 +3788,7 @@ class MainWindow(QMainWindow):
         for event in events:
             source = event.get("source") or "launch"
             stream = event.get("stream") or "stdout"
-            self.launch_log.appendPlainText(
-                f"[{source}/{stream}] {event.get('text') or ''}"
-            )
+            self.launch_log.appendPlainText(f"[{source}/{stream}] {event.get('text') or ''}")
         self._launch_log_cursor = int(batch.get("cursor") or self._launch_log_cursor)
         if events:
             scrollbar = self.launch_log.verticalScrollBar()

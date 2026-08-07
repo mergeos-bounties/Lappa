@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from rich import print as rprint
 
 from lappa import __version__
@@ -20,7 +18,7 @@ def run_desktop() -> int:
     return gui_main()
 
 
-def main(argv: Optional[list[str]] = None) -> None:
+def main(argv: list[str] | None = None) -> None:
     """
     CLI entry used by PyInstaller.
 

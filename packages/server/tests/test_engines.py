@@ -1,4 +1,4 @@
-from lappa.sim.engines import create_engine, ENGINES
+from lappa.sim.engines import ENGINES, create_engine
 
 
 def test_all_engines_registered():

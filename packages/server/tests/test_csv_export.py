@@ -11,9 +11,7 @@ from lappa.export.csv import (
 
 
 def test_export_csv(tmp_path):
-    output = export_trajectory_csv(
-        generate_sample_trajectory(), tmp_path / "trajectory.csv"
-    )
+    output = export_trajectory_csv(generate_sample_trajectory(), tmp_path / "trajectory.csv")
 
     with output.open(encoding="utf-8", newline="") as stream:
         rows = list(csv.reader(stream))

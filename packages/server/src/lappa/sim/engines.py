@@ -194,8 +194,7 @@ class BaseEngine:
 
     def _pose_is_clear(self, x: float, y: float) -> bool:
         return not any(
-            _circle_hits_aabb(x, y, self.robot_radius, obstacle)
-            for obstacle in self.obstacles
+            _circle_hits_aabb(x, y, self.robot_radius, obstacle) for obstacle in self.obstacles
         )
 
     def reset(self) -> None:
@@ -247,7 +246,8 @@ class Omni3W(BaseEngine):
         for i in range(3):
             # approximate wheel spin from planar speed magnitude
             self.state.joints[i] = _wrap(
-                self.state.joints[i] + (math.hypot(vx, vy) + abs(w) * 0.12) / r * dt * (1 if i % 2 == 0 else -1)
+                self.state.joints[i]
+                + (math.hypot(vx, vy) + abs(w) * 0.12) / r * dt * (1 if i % 2 == 0 else -1)
             )
 
 

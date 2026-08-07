@@ -59,7 +59,9 @@ _KNOWN_TOKEN = re.compile(
 def redact_log_text(text: str) -> str:
     """Remove common credentials before log text reaches an API or IDE widget."""
     clean = _AUTHORIZATION_VALUE.sub(r"Authorization\1[REDACTED]", str(text))
-    clean = _SECRET_ASSIGNMENT.sub(lambda match: f"{match.group(1)}{match.group(2)}[REDACTED]", clean)
+    clean = _SECRET_ASSIGNMENT.sub(
+        lambda match: f"{match.group(1)}{match.group(2)}[REDACTED]", clean
+    )
     clean = _BEARER_TOKEN.sub("Bearer [REDACTED]", clean)
     clean = _URL_CREDENTIALS.sub(r"\1[REDACTED]@", clean)
     return _KNOWN_TOKEN.sub("[REDACTED]", clean)
@@ -167,7 +169,7 @@ def open_docker_desktop() -> dict[str, Any]:
             "install_url": DOCKER_INSTALL_URL,
         }
     try:
-        subprocess.Popen([str(path)], close_fds=True)  # noqa: S603
+        subprocess.Popen([str(path)], close_fds=True)
     except OSError as exc:
         return {"ok": False, "error": str(exc), "path": str(path)}
     return {
@@ -297,17 +299,13 @@ def status() -> dict[str, Any]:
     vcode, vout, _ = _run(["docker", "--version"], timeout=5.0)
     if vcode == 0:
         base["cli_version"] = vout.strip()
-    compose_code, compose_out, _ = _run(
-        ["docker", "compose", "version", "--short"], timeout=5.0
-    )
+    compose_code, compose_out, _ = _run(["docker", "compose", "version", "--short"], timeout=5.0)
     base["compose_available"] = compose_code == 0
     base["compose_version"] = compose_out.strip() if compose_code == 0 else None
     context_code, context_out, _ = _run(["docker", "context", "show"], timeout=5.0)
     base["context"] = context_out.strip() if context_code == 0 else None
 
-    code, out, err = _run(
-        ["docker", "info", "--format", "{{json .ServerVersion}}"], timeout=8.0
-    )
+    code, out, err = _run(["docker", "info", "--format", "{{json .ServerVersion}}"], timeout=8.0)
     daemon = code == 0
     base["daemon"] = daemon
     if daemon:
@@ -361,11 +359,13 @@ def status() -> dict[str, Any]:
                 CONTAINER_NAME,
                 "bash",
                 "-lc",
-                "pid=$(cat /tmp/lappa_ros2_launch.pid 2>/dev/null || true); "
-                "if [ -n \"$pid\" ] && kill -0 \"$pid\" 2>/dev/null; then "
-                "printf 'running|%s|%s' \"$pid\" "
-                "\"$(cat /tmp/lappa_ros2_launch.demo 2>/dev/null || true)\"; "
-                "else printf 'idle||'; fi",
+                (
+                    "pid=$(cat /tmp/lappa_ros2_launch.pid 2>/dev/null || true); "
+                    'if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then '
+                    "printf 'running|%s|%s' \"$pid\" "
+                    '"$(cat /tmp/lappa_ros2_launch.demo 2>/dev/null || true)"; '
+                    "else printf 'idle||'; fi"
+                ),
             ],
             timeout=8.0,
         )
@@ -409,8 +409,7 @@ def status() -> dict[str, Any]:
         "message": message,
         "guidance": guidance,
         "ready_for_start": bool(base["compose_available"] and base["compose_file_exists"]),
-        "ready_for_launch": running
-        and container_health not in {"starting", "unhealthy"},
+        "ready_for_launch": running and container_health not in {"starting", "unhealthy"},
         "session": session_snapshot(
             container_running=running,
             launch_running=detected_launch,
@@ -466,9 +465,7 @@ def stop_runtime() -> dict[str, Any]:
     compose = DOCKER_DIR / "docker-compose.yml"
     if not compose.is_file():
         return {"ok": False, "error": "missing compose"}
-    code, out, err = _run(
-        ["docker", "compose", "-f", str(compose), "down"], timeout=60.0
-    )
+    code, out, err = _run(["docker", "compose", "-f", str(compose), "down"], timeout=60.0)
     with _STATE.lock:
         _STATE.mode = "idle"
         _STATE.demo = None
@@ -671,8 +668,7 @@ def launch_demo(demo: str, *, ensure_up: bool = True, rebuild: bool = True) -> d
         "ros2_status": ros_status[-2000:],
         "status_code": scode,
         "message": (
-            f"ROS2 package '{pkg}' built and launched in Docker "
-            f"(ros2 launch {pkg} {launch_file})"
+            f"ROS2 package '{pkg}' built and launched in Docker (ros2 launch {pkg} {launch_file})"
             if ok
             else "ros2 launch failed; see stdout/stderr. Native sim remains available."
         ),
@@ -785,9 +781,7 @@ def set_auto_explore(enabled: bool) -> dict[str, Any]:
         "enabled": bool(enabled),
         "stdout": out[-800:],
         "stderr": err[-800:],
-        "error": None
-        if code == 0
-        else (err or out or "ROS2 auto mapping control failed").strip(),
+        "error": None if code == 0 else (err or out or "ROS2 auto mapping control failed").strip(),
     }
 
 

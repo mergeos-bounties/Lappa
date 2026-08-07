@@ -1,5 +1,7 @@
 import os
+
 import pytest
+
 
 def test_empty_path_fixture():
     """Test that empty path fixture exists and is empty."""

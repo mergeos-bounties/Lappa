@@ -1,4 +1,5 @@
 ﻿from setuptools import setup
+
 package_name = 'ackermann_4w'
 setup(
     name=package_name,
