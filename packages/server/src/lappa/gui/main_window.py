@@ -60,6 +60,7 @@ from lappa import __version__, docker_bridge, models3d, packager, ros2_versions,
 from lappa.config import DEMOS_ROOT, ensure_dirs
 from lappa.gui.styles import STYLESHEET
 from lappa.package_loader import RosPackage, load_package, read_file, write_file
+from lappa.gui.topic_graph_widget import build_topic_graph_tab
 from lappa.sim.engines import DEFAULT_OBSTACLES
 from lappa.sim.session import SESSION
 
@@ -1773,6 +1774,7 @@ class MainWindow(QMainWindow):
         self.ops_tabs.addTab(self._tab_models(), "3D Models")
         self.ops_tabs.addTab(self._tab_packages(), "Packages")
         self.ops_tabs.addTab(self._tab_ros2(), "ROS2 / Docker")
+        self.ops_tabs.addTab(self._tab_topic_graph(), "Topic Graph")
         center_splitter.addWidget(self.ops_tabs)
         center_splitter.setSizes([640, 180])
         center_splitter.setStretchFactor(0, 4)
@@ -2233,6 +2235,10 @@ class MainWindow(QMainWindow):
         self.docker_output_tabs = output_tabs
         layout.addWidget(output_tabs, 1)
         self._refresh_docker()
+        return tab
+
+    def _tab_topic_graph(self) -> QWidget:
+        tab, _ = build_topic_graph_tab(self)
         return tab
 
     def _tab_console(self) -> QWidget:
